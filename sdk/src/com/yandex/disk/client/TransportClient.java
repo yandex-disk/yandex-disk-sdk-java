@@ -178,9 +178,6 @@ public class TransportClient {
         return serverURL.toExternalForm();
     }
 
-    // { ------------------------------------------------------------------------------------------------------------------------
-    // TODO move to utils class
-
     protected static void consumeContent(HttpResponse response)
             throws IOException {
         HttpEntity entity = response.getEntity();
@@ -216,10 +213,6 @@ public class TransportClient {
         Log.d(TAG, "logMethod(): "+method.getMethod()+": "+method.getURI()+(add != null ? " "+add : ""));
     }
 
-    public static boolean isHttpCode5XX(int code) {
-        return code >= 500 && code < 600;
-    }
-
     protected enum HashType {
         MD5, SHA256
     }
@@ -233,8 +226,6 @@ public class TransportClient {
             throw new RuntimeException(e);
         }
     }
-
-    // } ------------------------------------------------------------------------------------------------------------------------
 
     protected void checkStatusCodes(HttpResponse response, String details)
             throws WebdavException, IOException {
