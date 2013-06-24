@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item android:id="@+id/example_add_file"
+          android:title="@string/example_actionbar_add_file"
+          android:icon="@drawable/add_icon"
+          android:showAsAction="ifRoom"
+          android:enabled="true"
+        />
+
+    <item android:id="@+id/example_make_folder"
+          android:title="@string/example_actionbar_make_folder"
+          android:icon="@drawable/add_folder_icon"
+          android:showAsAction="ifRoom"
+          android:enabled="true"
+        />
+
+</menu>

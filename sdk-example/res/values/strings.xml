@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">sdk-example</string>
+    <string name="example_no_files">No files</string>
+    <string name="example_auth_title">Auth</string>
+    <string name="example_auth_message">Start browser to authorize?</string>
+    <string name="example_auth_positive_button">OK</string>
+    <string name="example_auth_negative_button">Exit</string>
+    <string name="example_loading_file_title">Loading file</string>
+    <string name="example_loading_file_cancel_button">Cancel</string>
+    <string name="example_loading_file_chooser_title">Open file</string>
+    <string name="example_loading_get_file_to_upload_chooser_title">Select file to upload</string>
+    <string name="example_actionbar_add_file">Add file</string>
+    <string name="example_actionbar_make_folder">Create folder</string>
+    <string name="example_get_file_unsupported_scheme">Unsupported scheme</string>
+    <string name="example_uploading_file_title">Uploading file</string>
+    <string name="example_file_uploaded_toast">File uploaded</string>
+    <string name="example_make_folder_title">Create folder</string>
+    <string name="example_make_folder_positive_button">Create</string>
+    <string name="example_make_folder_negative_button">Cancel</string>
+    <string name="example_make_folder_hint">Folder name</string>
+    <string name="example_progress_mkfolder_title">Creating folder</string>
+    <string name="example_progress_mkfolder_done">Folder created</string>
+</resources>
