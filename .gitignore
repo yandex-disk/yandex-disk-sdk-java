@@ -18,3 +18,15 @@ local.properties
 # Eclipse project files
 .classpath
 .project
+
+*.iml
+
+sdk/.idea
+sdk/bin/
+sdk/gen/
+
+sdk-example/.idea
+sdk-example/bin/
+sdk-example/gen/
+
+TODO.txt
