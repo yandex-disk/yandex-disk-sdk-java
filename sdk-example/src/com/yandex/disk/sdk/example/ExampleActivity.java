@@ -22,6 +22,7 @@ public class ExampleActivity extends FragmentActivity {
 
     public static String FRAGMENT_TAG = "list";
 
+    // create your own client_id on oauth.yandex.ru
     private static String AUTH_URL = "https://oauth.yandex.ru/authorize?response_type=token&client_id=ff90127313fd4378873d6b57914e8e11";
 
     public static String USERNAME = "example.username";
