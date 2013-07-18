@@ -248,7 +248,6 @@ public class TransportClient {
                 Log.d(TAG, "User not initialized: "+statusLine.getReasonPhrase());
                 throw new WebdavUserNotInitialized("Error (http code 403): "+details);
             case 412:
-                // TODO create separate exception(?): precondition failed
                 Log.d(TAG, "Http code 412 (Precondition failed): "+details);
                 throw new WebdavException("Error (http code 412): "+details);
             case 413:
@@ -631,7 +630,7 @@ public class TransportClient {
                     return;
                 case 404:
                     throw new WebdavFileNotFoundException("'"+src+"' not found");
-                case 409:   // TODO never happen?
+                case 409:
                     throw new DuplicateFolderException("Folder "+dest+" already exist");
                 default:
                     checkStatusCodesFinal(response, "MOVE '"+src+"' to '"+dest+"'");

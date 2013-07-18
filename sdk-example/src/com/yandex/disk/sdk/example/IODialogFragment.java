@@ -1,3 +1,12 @@
+/* Copyright (c) 2013 Yandex LLC
+ *
+ * Лицензионное соглашение на использование набора средств разработки
+ * «SDK Яндекс.Диска» доступно по адресу: http://legal.yandex.ru/sdk_agreement
+ *
+ * License agreement on use of Toolkit
+ * «SDK Яндекс.Диска» available at: http://legal.yandex.ru/sdk_agreement
+ */
+
 package com.yandex.disk.sdk.example;
 
 import android.app.ProgressDialog;
@@ -14,7 +23,4 @@ public class IODialogFragment extends DialogFragment {
         dialog.dismiss();
         Toast.makeText(getActivity(), ex.getMessage(), Toast.LENGTH_LONG).show();
     }
-
-    // TODO move all common code here
-
 }

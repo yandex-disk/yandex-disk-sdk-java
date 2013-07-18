@@ -56,7 +56,6 @@ public class FileProgressHttpEntity extends AbstractHttpEntity {
         InputStream inputStream = new FileInputStream(file);
         if (start > 0) {
             long skipped = inputStream.skip(start);
-            // TODO check skipped
         }
         long loaded = 0;
         updateProgress(loaded);
