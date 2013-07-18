@@ -1,9 +1,14 @@
+/* Copyright (c) 2013 Yandex LLC
+ *
+ * Лицензионное соглашение на использование набора средств разработки
+ * «SDK Яндекс.Диска» доступно по адресу: http://legal.yandex.ru/sdk_agreement
+ *
+ * License agreement on use of Toolkit
+ * «SDK Яндекс.Диска» available at: http://legal.yandex.ru/sdk_agreement
+ */
+
 package com.yandex.disk.client.exceptions;
 
-/**
- * Author: abakumov
- * Created: 8/30/11 4:31 PM
- */
 public class DuplicateFolderException extends WebdavException {
     public DuplicateFolderException(String detailMessage) {
         super(detailMessage);
