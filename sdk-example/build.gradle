@@ -3,7 +3,7 @@ apply plugin: 'maven'
 
 group = 'ru.yandex.android'
 
-version = '1.21-SNAPSHOT'
+version = '1.0-SNAPSHOT'
 
 buildscript {
     repositories {
@@ -38,8 +38,8 @@ configurations.all {
     resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
 }
 dependencies {
-    apklib ('ru.yandex.android:contactslib:1.0-SNAPSHOT:nolibs@apklib')
     apklib ('ru.yandex.android:authlib:1.20:nolibs@apklib')
+    apklib ('ru.yandex.android:yandex-disk-sdk:1.0-SNAPSHOT:nolibs@apklib')
 }
 
 task wrapper(type: Wrapper) {
