@@ -21,12 +21,14 @@ import android.support.v4.app.ListFragment;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
 import android.util.Log;
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
@@ -60,6 +62,8 @@ public class ListExampleFragment extends ListFragment implements LoaderManager.L
 
         setHasOptionsMenu(true);
 
+        registerForContextMenu(getListView());
+
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
         String username = preferences.getString(ExampleActivity.USERNAME, null);
         String token = preferences.getString(ExampleActivity.TOKEN, null);
@@ -83,6 +87,39 @@ public class ListExampleFragment extends ListFragment implements LoaderManager.L
 
     public void restartLoader() {
         getLoaderManager().restartLoader(0, null, this);
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+
+        menu.setHeaderTitle(getListItem(menuInfo).getDisplayName());
+
+        MenuInflater inflater = getActivity().getMenuInflater();
+        inflater.inflate(R.menu.example_context_menu, menu);
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        ListItem listItem = getListItem(item.getMenuInfo());
+        switch (item.getItemId()) {
+//            case R.id.example_context_publish:
+//                Log.d(TAG, "onContextItemSelected: publish: listItem="+listItem);
+//                return true;
+//            case R.id.example_context_move:
+//                Log.d(TAG, "onContextItemSelected: move: listItem="+listItem);
+//                return true;
+            case R.id.example_context_delete:
+                DeleteItemDialogFragment.newInstance(credentials, listItem).show(getFragmentManager(), "deleteItemDialog");
+                return true;
+            default:
+                return super.onContextItemSelected(item);
+        }
+    }
+
+    private ListItem getListItem(ContextMenu.ContextMenuInfo menuInfo) {
+        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
+        return (ListItem) getListAdapter().getItem(info.position);
     }
 
     @Override
@@ -279,6 +316,55 @@ public class ListExampleFragment extends ListFragment implements LoaderManager.L
                         }
                     })
                     .setNegativeButton(R.string.example_make_folder_negative_button, null)
+                    .create();
+        }
+    }
+
+    public static class DeleteItemDialogFragment extends DialogFragment {
+
+        private static final String CREDENTIALS = "example.credentials";
+        private static final String LIST_ITEM = "example.list.item";
+
+        private Credentials credentials;
+        private ListItem listItem;
+
+        public static DeleteItemDialogFragment newInstance(Credentials credentials, ListItem listItem) {
+            DeleteItemDialogFragment fragment = new DeleteItemDialogFragment();
+
+            Bundle args = new Bundle();
+            args.putParcelable(CREDENTIALS, credentials);
+            args.putParcelable(LIST_ITEM, listItem);
+            fragment.setArguments(args);
+
+            return fragment;
+        }
+
+        public DeleteItemDialogFragment() {
+            super();
+        }
+
+        @Override
+        public void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+
+            credentials = getArguments().getParcelable(CREDENTIALS);
+            listItem = getArguments().getParcelable(LIST_ITEM);
+        }
+
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            return new AlertDialog.Builder(getActivity())
+                    .setTitle(listItem.isCollection() ? R.string.example_delete_folder_title : R.string.example_delete_file_title)
+                    .setMessage(listItem.getDisplayName())
+                    .setPositiveButton(R.string.example_delete_item_positive_button, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                            DeleteItemFragment.newInstance(credentials, listItem.getFullPath(), listItem.getDisplayName(),
+                                                           listItem.isCollection()).show(getFragmentManager(), "deleteItem");
+                        }
+                    })
+                    .setNegativeButton(R.string.example_delete_item_negative_button, null)
                     .create();
         }
     }

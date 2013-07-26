@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+<!--
+    <item android:id="@+id/example_context_publish"
+          android:title="@string/example_context_menu_publish"
+        />
+
+    <item android:id="@+id/example_context_move"
+          android:title="@string/example_context_menu_move"
+        />
+-->
+
+    <item android:id="@+id/example_context_delete"
+          android:title="@string/example_context_menu_delete"
+        />
+
+</menu>

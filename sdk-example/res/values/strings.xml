@@ -21,4 +21,13 @@
     <string name="example_make_folder_hint">Folder name</string>
     <string name="example_progress_mkfolder_title">Creating folder</string>
     <string name="example_progress_mkfolder_done">Folder created</string>
+    <string name="example_context_menu_delete">Delete</string>
+    <string name="example_context_menu_move">Rename / Move</string>
+    <string name="example_context_menu_publish">Publish / unpublish</string>
+    <string name="example_delete_file_title">Delete file</string>
+    <string name="example_delete_folder_title">Delete folder</string>
+    <string name="example_delete_item_positive_button">Delete</string>
+    <string name="example_delete_item_negative_button">Cancel</string>
+    <string name="example_delete_file_done">File deleted</string>
+    <string name="example_delete_folder_done">Folder deleted</string>
 </resources>
