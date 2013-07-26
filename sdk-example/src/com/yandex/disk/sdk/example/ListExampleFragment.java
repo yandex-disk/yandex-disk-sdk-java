@@ -103,12 +103,12 @@ public class ListExampleFragment extends ListFragment implements LoaderManager.L
     public boolean onContextItemSelected(MenuItem item) {
         ListItem listItem = getListItem(item.getMenuInfo());
         switch (item.getItemId()) {
-//            case R.id.example_context_publish:
-//                Log.d(TAG, "onContextItemSelected: publish: listItem="+listItem);
-//                return true;
-//            case R.id.example_context_move:
-//                Log.d(TAG, "onContextItemSelected: move: listItem="+listItem);
-//                return true;
+            case R.id.example_context_publish:
+                Log.d(TAG, "onContextItemSelected: publish: listItem="+listItem);
+                return true;
+            case R.id.example_context_move:
+                RenameMoveDialogFragment.newInstance(credentials, listItem).show(getFragmentManager(), "renameMoveDialog");
+                return true;
             case R.id.example_context_delete:
                 DeleteItemDialogFragment.newInstance(credentials, listItem).show(getFragmentManager(), "deleteItemDialog");
                 return true;
@@ -304,13 +304,14 @@ public class ListExampleFragment extends ListFragment implements LoaderManager.L
         @Override
         public Dialog onCreateDialog(Bundle savedInstanceState) {
             final View view = getActivity().getLayoutInflater().inflate(R.layout.make_folder_layout, null);
+            ((EditText) view.findViewById(R.id.example_edit_text_in_dialog)).setHint(R.string.example_make_folder_hint);
             return new AlertDialog.Builder(getActivity())
                     .setView(view)
                     .setTitle(R.string.example_make_folder_title)
                     .setPositiveButton(R.string.example_make_folder_positive_button, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick (DialogInterface dialog, int which) {
-                            String name = ((EditText) view.findViewById(R.id.example_folder_name)).getText().toString();
+                            String name = ((EditText) view.findViewById(R.id.example_edit_text_in_dialog)).getText().toString();
                             dialog.dismiss();
                             MakeFolderFragment.newInstance(credentials, currentDir, name).show(getFragmentManager(), "makeFolder");
                         }
@@ -320,35 +321,10 @@ public class ListExampleFragment extends ListFragment implements LoaderManager.L
         }
     }
 
-    public static class DeleteItemDialogFragment extends DialogFragment {
-
-        private static final String CREDENTIALS = "example.credentials";
-        private static final String LIST_ITEM = "example.list.item";
-
-        private Credentials credentials;
-        private ListItem listItem;
+    public static class DeleteItemDialogFragment extends ContextMenuDialogFragment {
 
         public static DeleteItemDialogFragment newInstance(Credentials credentials, ListItem listItem) {
-            DeleteItemDialogFragment fragment = new DeleteItemDialogFragment();
-
-            Bundle args = new Bundle();
-            args.putParcelable(CREDENTIALS, credentials);
-            args.putParcelable(LIST_ITEM, listItem);
-            fragment.setArguments(args);
-
-            return fragment;
-        }
-
-        public DeleteItemDialogFragment() {
-            super();
-        }
-
-        @Override
-        public void onCreate(Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-
-            credentials = getArguments().getParcelable(CREDENTIALS);
-            listItem = getArguments().getParcelable(LIST_ITEM);
+            return newInstance(new DeleteItemDialogFragment(), credentials, listItem);
         }
 
         @Override
@@ -368,4 +344,32 @@ public class ListExampleFragment extends ListFragment implements LoaderManager.L
                     .create();
         }
     }
+
+    public static class RenameMoveDialogFragment extends ContextMenuDialogFragment {
+
+        public static RenameMoveDialogFragment newInstance(Credentials credentials, ListItem listItem) {
+            return newInstance(new RenameMoveDialogFragment(), credentials, listItem);
+        }
+
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            final View view = getActivity().getLayoutInflater().inflate(R.layout.make_folder_layout, null);
+            ((EditText) view.findViewById(R.id.example_edit_text_in_dialog)).setHint(R.string.example_move_rename_item_hint);
+            return new AlertDialog.Builder(getActivity())
+                    .setView(view)
+                    .setTitle(R.string.example_move_rename_item_title)
+                    .setPositiveButton(R.string.example_move_rename_positive_button, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick (DialogInterface dialog, int which) {
+                            String name = ((EditText) view.findViewById(R.id.example_edit_text_in_dialog)).getText().toString();
+                            dialog.dismiss();
+                            RenameMoveItemFragment.newInstance(credentials, listItem.getFullPath(),
+                                                               name /* assume this is full path */ ).show(getFragmentManager(), "renameMoveItem");
+                        }
+                    })
+                    .setNegativeButton(R.string.example_move_rename_negative_button, null)
+                    .create();
+        }
+    }
+
 }
