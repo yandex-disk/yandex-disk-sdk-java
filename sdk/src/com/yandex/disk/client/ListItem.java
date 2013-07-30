@@ -19,12 +19,12 @@ public class ListItem implements Parcelable {
 
     private static final String TAG = "ListItem";
 
-    private String displayName, fullPath, etag, contentType, ownerName;
+    private String displayName, fullPath, etag, contentType, ownerName, publicUrl;
     private boolean isCollection, aliasEnabled, shared, readOnly, visible;
     private long contentLength, lastUpdated;
 
     public static final class Builder {
-        private String fullPath, displayName, contentLength, lastModified, etag, contentType, ownerName;
+        private String fullPath, displayName, contentLength, lastModified, etag, contentType, ownerName, publicUrl;
         private boolean isCollection, aliasEnabled, visible, shared, readOnly;
 
         public void addFullPath(String fullPath) {
@@ -75,14 +75,18 @@ public class ListItem implements Parcelable {
             this.readOnly = readOnly;
         }
 
+        public void addPublicUrl(String publicUrl) {
+            this.publicUrl = publicUrl;
+        }
+
         public ListItem build() {
             return new ListItem(fullPath, displayName, contentLength, lastModified, isCollection, etag,
-                                contentType, shared, ownerName, aliasEnabled, readOnly, visible);
+                                contentType, shared, ownerName, aliasEnabled, readOnly, visible, publicUrl);
         }
     }
 
     private ListItem(String fullPath, String displayName, String contentLength, String lastUpdated, boolean isCollection, String etag,
-                     String contentType, boolean shared, String ownerName, boolean aliasEnabled, boolean readOnly, boolean visible) {
+                     String contentType, boolean shared, String ownerName, boolean aliasEnabled, boolean readOnly, boolean visible, String publicUrl) {
         this.fullPath = fullPath;
         if (displayName != null) {
             this.displayName = displayName;
@@ -103,10 +107,11 @@ public class ListItem implements Parcelable {
         this.aliasEnabled = aliasEnabled;
         this.readOnly = readOnly;
         this.visible = visible;
+        this.publicUrl = publicUrl;
     }
 
     private ListItem(String fullPath, String displayName, long contentLength, long lastUpdated, boolean isCollection, String etag,
-                     boolean aliasEnabled, String contentType, boolean shared, boolean readonly, String ownerName) {
+                     boolean aliasEnabled, String contentType, boolean shared, boolean readonly, String ownerName, String publicUrl) {
         this.fullPath = fullPath;
         this.displayName = displayName;
         this.contentLength = contentLength;
@@ -118,6 +123,7 @@ public class ListItem implements Parcelable {
         this.shared = shared;
         this.readOnly = readonly;
         this.ownerName = ownerName;
+        this.publicUrl = publicUrl;
     }
 
     private static final Map<String, Integer> MONTH = new HashMap<String, Integer>();
@@ -169,6 +175,7 @@ public class ListItem implements Parcelable {
                 ", aliasEnabled="+aliasEnabled+
                 ", readOnly="+readOnly+
                 ", visible="+visible+
+                ", publicUrl="+publicUrl+
                 " }";
     }
 
@@ -190,6 +197,7 @@ public class ListItem implements Parcelable {
         parcel.writeByte((byte) (shared ? 1 : 0));
         parcel.writeByte((byte) (readOnly ? 1 : 0));
         parcel.writeString(ownerName);
+        parcel.writeString(publicUrl);
     }
 
     public static final Parcelable.Creator<ListItem> CREATOR = new Parcelable.Creator<ListItem>() {
@@ -198,7 +206,7 @@ public class ListItem implements Parcelable {
             return new ListItem(parcel.readString(), parcel.readString(), parcel.readLong(),
                                 parcel.readLong(), parcel.readByte() > 0, parcel.readString(), parcel.readByte() > 0,
                                 parcel.readString(), parcel.readByte() > 0, parcel.readByte() > 0,
-                                parcel.readString());
+                                parcel.readString(), parcel.readString());
         }
 
         public ListItem[] newArray(int size) {
@@ -255,5 +263,9 @@ public class ListItem implements Parcelable {
 
     public boolean isVisible() {
         return visible;
+    }
+
+    public String getPublicUrl() {
+        return publicUrl;
     }
 }

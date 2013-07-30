@@ -105,6 +105,11 @@ public class ListExampleFragment extends ListFragment implements LoaderManager.L
         switch (item.getItemId()) {
             case R.id.example_context_publish:
                 Log.d(TAG, "onContextItemSelected: publish: listItem="+listItem);
+                if (listItem.getPublicUrl() != null) {
+                    ShowPublicUrlDialogFragment.newInstance(credentials, listItem).show(getFragmentManager(), "showPublicUrlDialog");
+                } else {
+                    MakeItemPublicFragment.newInstance(credentials, listItem.getFullPath(), true).show(getFragmentManager(), "makeItemPublic");
+                }
                 return true;
             case R.id.example_context_move:
                 RenameMoveDialogFragment.newInstance(credentials, listItem).show(getFragmentManager(), "renameMoveDialog");
@@ -372,4 +377,26 @@ public class ListExampleFragment extends ListFragment implements LoaderManager.L
         }
     }
 
+    public static class ShowPublicUrlDialogFragment extends ContextMenuDialogFragment {
+
+        public static ShowPublicUrlDialogFragment newInstance(Credentials credentials, ListItem listItem) {
+            return newInstance(new ShowPublicUrlDialogFragment(), credentials, listItem);
+        }
+
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            return new AlertDialog.Builder(getActivity())
+                    .setTitle(R.string.example_publish_show_url_title)
+                    .setMessage(listItem.getPublicUrl())
+                    .setPositiveButton(R.string.example_publish_show_url_positive_button, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick (DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                            MakeItemPublicFragment.newInstance(credentials, listItem.getFullPath(), false).show(getFragmentManager(), "makeItemPublic");
+                        }
+                    })
+                    .setNegativeButton(R.string.example_publish_show_url_negative_button, null)
+                    .create();
+        }
+    }
 }

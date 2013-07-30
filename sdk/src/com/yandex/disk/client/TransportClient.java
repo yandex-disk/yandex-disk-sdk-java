@@ -281,6 +281,7 @@ public class TransportClient {
                     "<m:visible/>"+
                     "<m:shared/>"+
                     "<m:readonly/>"+
+                    "<m:public_url/>"+
                     "</d:prop>"+
                     "</d:propfind>";
 

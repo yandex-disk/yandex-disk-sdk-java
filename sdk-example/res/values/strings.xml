@@ -35,4 +35,8 @@
     <string name="example_move_rename_item_done">Rename or move completed</string>
     <string name="example_move_rename_positive_button">Rename / move</string>
     <string name="example_move_rename_negative_button">Cancel</string>
+    <string name="example_publish_show_url_title">Public url</string>
+    <string name="example_publish_show_url_positive_button">Revoke</string>
+    <string name="example_publish_show_url_negative_button">Close</string>
+    <string name="example_publish_show_url_revoked">Public url has been revoked</string>
 </resources>

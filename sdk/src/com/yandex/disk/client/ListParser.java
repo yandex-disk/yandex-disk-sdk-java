@@ -74,6 +74,8 @@ public class ListParser extends Parser {
                 builder.addReadOnly(parseBoolean(text));
             } else if ("/multistatus/response/propstat/prop/owner_name".equals(path)) {
                 builder.addOwnerName(text);
+            } else if ("/multistatus/response/propstat/prop/public_url".equals(path)) {
+                builder.addPublicUrl(text);
             }
         } else if ("/multistatus/response".equals(path)) {
             ListItem item = builder.build();
