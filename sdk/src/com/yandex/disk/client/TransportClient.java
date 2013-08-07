@@ -12,9 +12,11 @@ import android.util.Log;
 import com.yandex.disk.client.exceptions.CancelledDownloadException;
 import com.yandex.disk.client.exceptions.CancelledPropfindException;
 import com.yandex.disk.client.exceptions.DuplicateFolderException;
+import com.yandex.disk.client.exceptions.FileDownloadException;
 import com.yandex.disk.client.exceptions.FileTooBigServerException;
 import com.yandex.disk.client.exceptions.FilesLimitExceededServerException;
 import com.yandex.disk.client.exceptions.IntermediateFolderNotExistException;
+import com.yandex.disk.client.exceptions.RangeNotSatisfiableException;
 import com.yandex.disk.client.exceptions.ServerWebdavException;
 import com.yandex.disk.client.exceptions.WebdavClientInitException;
 import com.yandex.disk.client.exceptions.WebdavException;
@@ -24,6 +26,7 @@ import com.yandex.disk.client.exceptions.WebdavUserNotInitialized;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
 import org.apache.http.HttpVersion;
 import org.apache.http.StatusLine;
 import org.apache.http.client.HttpClient;
@@ -68,6 +71,8 @@ import java.net.URLEncoder;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class TransportClient {
 
@@ -103,6 +108,27 @@ public class TransportClient {
     public static TransportClient getUploadInstance(Context context, Credentials credentials)
             throws WebdavClientInitException {
         return new TransportClient(context, credentials, UPLOAD_NETWORK_TIMEOUT);
+    }
+
+//    public static TransportClient getInstance(Context context, Credentials credentials, String server, int timeout)
+//            throws WebdavClientInitException {
+//        TransportClient client = new TransportClient(context, credentials, timeout);
+//        try {
+//            serverURL = new URL(server);
+//        } catch (MalformedURLException ex) {
+//            throw new RuntimeException(ex);
+//        }
+//        return client;
+//    }
+
+    /**
+     * For temporary use in WebdavClient while migration isn't finished yet
+     */
+    public TransportClient(Context context, Credentials credentials, HttpClient httpClient)
+            throws WebdavClientInitException {
+        this.context = context;
+        this.creds = credentials;
+        this.httpClient = httpClient;
     }
 
     protected TransportClient(Context context, Credentials credentials, int timeout)
@@ -478,42 +504,83 @@ public class TransportClient {
         }
     }
 
+    // TODO remove old version
     public void downloadFile(String path, File saveTo, ProgressListener progressListener)
+            throws WebdavException, IOException {
+        downloadFile(path, saveTo, 0, 0, progressListener);
+    }
+
+    public void downloadFile(String path, File saveTo, long length, long fileSize, ProgressListener progressListener)
             throws WebdavException, IOException {
         String url = getUrl()+encodeURL(path);
         HttpGet get = new HttpGet(url);
         logMethod(get, " to "+saveTo);
         creds.addAuthHeader(get);
+
+        if (length > 0) {
+            StringBuffer contentRange = new StringBuffer();
+            contentRange.append("bytes ").append(length).append("-");
+            if (fileSize > 0) {
+                contentRange.append(fileSize-1).append("/").append(fileSize);
+            }
+            Log.d(TAG, "Range: "+contentRange);
+            get.addHeader("Range", contentRange.toString());
+        }
+
+        boolean partialContent = false;
         HttpResponse httpResponse = httpClient.execute(get);
         StatusLine statusLine = httpResponse.getStatusLine();
         if (statusLine != null) {
             int statusCode = statusLine.getStatusCode();
-            if (statusCode == 404) {
-                consumeContent(httpResponse);
-                throw new WebdavException("File not found "+url);
-            } else if (statusCode >= 500 && statusCode < 600) {
-                consumeContent(httpResponse);
-                throw new ServerWebdavException("Error while downloading file "+url);
+            switch (statusCode) {
+                case HttpStatus.SC_OK:
+                    // OK
+                    break;
+                case HttpStatus.SC_PARTIAL_CONTENT:
+                    partialContent = true;
+                    break;
+                case HttpStatus.SC_NOT_FOUND:
+                    consumeContent(httpResponse);
+                    throw new FileDownloadException("error while downloading file "+url);
+                case HttpStatus.SC_REQUESTED_RANGE_NOT_SATISFIABLE:
+                    consumeContent(httpResponse);
+                    throw new RangeNotSatisfiableException("error while downloading file "+url);
+                default:
+                    checkStatusCodes(httpResponse, "GET '"+url+"'");
+                    break;
             }
         }
 
         HttpEntity response = httpResponse.getEntity();
         long contentLength = response.getContentLength();
-        if (contentLength < 0) {
-            // Transfer-Encoding: chunked
-            contentLength = 0;
+        Log.d(TAG, "downloadFile: contentLength="+contentLength);
+
+        long loaded;
+        if (partialContent) {
+            ContentRangeResponse contentRangeResponse = parseContentRangeHeader(httpResponse.getLastHeader("Content-Range"));
+            Log.d(TAG, "downloadFile: contentRangeResponse="+contentRangeResponse);
+            if (contentRangeResponse != null) {
+                loaded = contentRangeResponse.getStart();
+                contentLength = contentRangeResponse.getSize();
+            } else {
+                loaded = length;
+                contentLength = fileSize;
+            }
+        } else {
+            loaded = 0;
+            if (contentLength < 0) {
+                contentLength = 0;
+            }
         }
 
         int count;
-        long loaded = 0;
         InputStream content = response.getContent();
-        FileOutputStream fos = new FileOutputStream(saveTo);
+        FileOutputStream fos = new FileOutputStream(saveTo, partialContent);
         try {
             final byte[] downloadBuffer = new byte[1024];
             while ((count = content.read(downloadBuffer)) != -1) {
                 if (progressListener.hasCancelled()) {
                     Log.i(TAG, "Downloading "+path+" canceled");
-                    saveTo.delete();
                     get.abort();
                     throw new CancelledDownloadException();
                 }
@@ -545,6 +612,28 @@ public class TransportClient {
             } catch (IOException e) {
                 Log.w(TAG, e);
             }
+        }
+    }
+
+    private static Pattern CONTENT_RANGE_HEADER_PATTERN = Pattern.compile("bytes\\D+(\\d+)-\\d+/(\\d+)");
+
+    private ContentRangeResponse parseContentRangeHeader(Header header) {
+        if (header == null) {
+            return null;
+        }
+        Log.d(TAG, header.getName()+": "+header.getValue());
+        Matcher matcher = CONTENT_RANGE_HEADER_PATTERN.matcher(header.getValue());
+        if (!matcher.matches()) {
+            return null;
+        }
+        try {
+            return new ContentRangeResponse(Long.parseLong(matcher.group(1)), Long.parseLong(matcher.group(2)));
+        } catch (IllegalStateException ex) {
+            Log.d(TAG, "parseContentRangeHeader: "+header, ex);
+            return null;
+        } catch (NumberFormatException ex) {
+            Log.d(TAG, "parseContentRangeHeader: "+header, ex);
+            return null;
         }
     }
 
