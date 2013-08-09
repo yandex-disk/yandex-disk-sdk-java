@@ -21,8 +21,7 @@ public class FileProgressHttpEntity extends AbstractHttpEntity {
     private long start;
     private ProgressListener progressListener;
 
-    public FileProgressHttpEntity(File file, long start, ProgressListener progressListener)
-            throws IOException {
+    public FileProgressHttpEntity(File file, long start, ProgressListener progressListener) {
         this.file = file;
         this.start = start;
         this.progressListener = progressListener;

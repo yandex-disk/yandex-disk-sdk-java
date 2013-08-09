@@ -16,6 +16,7 @@ import com.yandex.disk.client.exceptions.FileDownloadException;
 import com.yandex.disk.client.exceptions.FileTooBigServerException;
 import com.yandex.disk.client.exceptions.FilesLimitExceededServerException;
 import com.yandex.disk.client.exceptions.IntermediateFolderNotExistException;
+import com.yandex.disk.client.exceptions.PreconditionFailedException;
 import com.yandex.disk.client.exceptions.RangeNotSatisfiableException;
 import com.yandex.disk.client.exceptions.ServerWebdavException;
 import com.yandex.disk.client.exceptions.WebdavClientInitException;
@@ -260,23 +261,24 @@ public class TransportClient {
     }
 
     protected void checkStatusCodes(HttpResponse response, String details)
-            throws WebdavException, IOException {
+            throws WebdavNotAuthorizedException, WebdavUserNotInitialized, FileTooBigServerException,
+            FilesLimitExceededServerException, ServerWebdavException, PreconditionFailedException {
         StatusLine statusLine = response.getStatusLine();
         int statusCode = statusLine.getStatusCode();
         switch (statusCode) {
-            case 401:
+            case HttpStatus.SC_UNAUTHORIZED:  // 401
                 Log.d(TAG, "Not authorized: "+statusLine.getReasonPhrase());
                 throw new WebdavNotAuthorizedException(statusLine.getReasonPhrase() != null ? statusLine.getReasonPhrase() : "");
-            case 403:
+            case HttpStatus.SC_FORBIDDEN:  // 403
                 Log.d(TAG, "User not initialized: "+statusLine.getReasonPhrase());
                 throw new WebdavUserNotInitialized("Error (http code 403): "+details);
-            case 412:
+            case HttpStatus.SC_PRECONDITION_FAILED:  // 412
                 Log.d(TAG, "Http code 412 (Precondition failed): "+details);
-                throw new WebdavException("Error (http code 412): "+details);
-            case 413:
+                throw new PreconditionFailedException("Error (http code 412): "+details);
+            case HttpStatus.SC_REQUEST_TOO_LONG:  // 413
                 Log.d(TAG, "Http code 413 (File too big): "+details);
                 throw new FileTooBigServerException();
-            case 507:
+            case HttpStatus.SC_INSUFFICIENT_STORAGE:  // 507
                 Log.d(TAG, "Http code 507 (Insufficient Storage): "+details);
                 throw new FilesLimitExceededServerException();
             default:
@@ -417,7 +419,7 @@ public class TransportClient {
         consumeContent(response);
         StatusLine statusLine = response.getStatusLine();
         if (statusLine != null) {
-            if (statusLine.getStatusCode() == 200) {
+            if (statusLine.getStatusCode() == HttpStatus.SC_OK) {
 //                Log.d(TAG, "200 "+statusLine.getReasonPhrase()+" for file "+file.getAbsolutePath()+" in dir "+dir);
                 Header[] headers = response.getHeaders("Content-Length");
                 if (headers.length > 0) {
@@ -460,7 +462,8 @@ public class TransportClient {
      * @throws IOException     I/O exceptions
      */
     public void uploadFile(File file, String dir, String destFileName, String hash, final ProgressListener progressListener)
-            throws WebdavException, IOException {
+            throws IntermediateFolderNotExistException, IOException, WebdavUserNotInitialized, PreconditionFailedException,
+            WebdavNotAuthorizedException, ServerWebdavException {
 
         String destName = TextUtils.isEmpty(destFileName) ? file.getName() : destFileName;
         String url = getUrl()+encodeURL(dir+"/"+destName);
@@ -492,10 +495,10 @@ public class TransportClient {
         if (statusLine != null) {
             consumeContent(response);
             switch (statusLine.getStatusCode()) {
-                case 201:
+                case HttpStatus.SC_CREATED:  // 201
                     Log.d(TAG, "File uploaded successfully: "+file);
                     return;
-                case 409:
+                case HttpStatus.SC_CONFLICT:  // 409
                     Log.d(TAG, "Parent not exist for dir "+dir);
                     throw new IntermediateFolderNotExistException("Parent folder not exists for '"+dir+"'");
                 default:
@@ -505,12 +508,14 @@ public class TransportClient {
     }
 
     public void downloadFile(String path, File saveTo, ProgressListener progressListener)
-            throws WebdavException, IOException {
+            throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
+            CancelledDownloadException {
         downloadFile(path, saveTo, 0, 0, progressListener);
     }
 
     public void downloadFile(String path, File saveTo, long length, long fileSize, ProgressListener progressListener)
-            throws WebdavException, IOException {
+            throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
+            CancelledDownloadException {
         String url = getUrl()+encodeURL(path);
         HttpGet get = new HttpGet(url);
         logMethod(get, " to "+saveTo);
