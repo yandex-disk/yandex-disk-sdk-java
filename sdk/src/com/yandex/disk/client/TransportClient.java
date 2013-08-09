@@ -504,7 +504,6 @@ public class TransportClient {
         }
     }
 
-    // TODO remove old version
     public void downloadFile(String path, File saveTo, ProgressListener progressListener)
             throws WebdavException, IOException {
         downloadFile(path, saveTo, 0, 0, progressListener);
@@ -598,14 +597,14 @@ public class TransportClient {
             } else if (e instanceof RuntimeException) {
                 throw (RuntimeException) e;
             } else {
-                //it must be never happen
+                // never happen
                 throw new RuntimeException(e);
             }
         } finally {
             try {
                 fos.close();
             } catch (IOException ex) {
-                // supress IOException on cancel
+                // nothing
             }
             try {
                 response.consumeContent();
