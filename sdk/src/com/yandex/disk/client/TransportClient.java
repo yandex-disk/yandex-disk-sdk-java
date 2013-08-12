@@ -61,6 +61,7 @@ import org.apache.http.protocol.HttpContext;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -246,18 +247,35 @@ public class TransportClient {
         Log.d(TAG, "logMethod(): "+method.getMethod()+": "+method.getURI()+(add != null ? " "+add : ""));
     }
 
-    protected enum HashType {
+    public enum HashType {
         MD5, SHA256
     }
 
-    protected static String makeHash(String string, HashType type) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance(type.name());
-            byte[] hash = digest.digest(string.getBytes());
-            return new BigInteger(1, hash).toString(16);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+    public static String makeHash(File file, HashType hashType)
+            throws IOException, NoSuchAlgorithmException {
+        long time = System.currentTimeMillis();
+        FileInputStream is = new FileInputStream(file);
+        MessageDigest digest = MessageDigest.getInstance(hashType.name());
+        byte[] buf = new byte[8192];
+        int count;
+        while ((count = is.read(buf)) > 0) {
+            digest.update(buf, 0, count);
         }
+        String hash = hash(digest.digest());
+        Log.d(TAG, hashType.name()+": "+file.getAbsolutePath()+" hash="+hash+" time="+(System.currentTimeMillis()-time));
+        return hash;
+    }
+
+    public static String hash(byte[] bytes) {
+        StringBuilder out = new StringBuilder();
+        for (byte b : bytes) {
+            String n = Integer.toHexString(b & 0x000000FF);
+            if (n.length() == 1) {
+                out.append('0');
+            }
+            out.append(n);
+        }
+        return out.toString();
     }
 
     protected void checkStatusCodes(HttpResponse response, String details)
@@ -445,9 +463,9 @@ public class TransportClient {
      * @throws IOException     I/O exceptions
      */
     public void uploadFile(String localPath, String serverDir, ProgressListener progressListener)
-            throws WebdavException, IOException {
+            throws WebdavException, IOException, NoSuchAlgorithmException {
         File file = new File(localPath);
-        uploadFile(file, serverDir, file.getName(), makeHash(localPath, HashType.MD5), progressListener);
+        uploadFile(file, serverDir, file.getName(), makeHash(file, HashType.MD5), progressListener);
     }
 
     /**
@@ -475,7 +493,7 @@ public class TransportClient {
 
         long uploadedSize;
         try {
-            uploadedSize = headFile(file, dir, destFileName, hash);
+            uploadedSize = headFile(file, dir, destName, hash);
         } catch (Throwable ex) {
             Log.w(TAG, "Uploading "+file.getAbsolutePath()+" to "+dir+" failed", ex);
             uploadedSize = 0;
