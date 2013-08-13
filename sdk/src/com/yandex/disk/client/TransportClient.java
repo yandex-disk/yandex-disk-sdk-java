@@ -19,6 +19,8 @@ import com.yandex.disk.client.exceptions.IntermediateFolderNotExistException;
 import com.yandex.disk.client.exceptions.PreconditionFailedException;
 import com.yandex.disk.client.exceptions.RangeNotSatisfiableException;
 import com.yandex.disk.client.exceptions.ServerWebdavException;
+import com.yandex.disk.client.exceptions.UnknownServerWebdavException;
+import com.yandex.disk.client.exceptions.UnsupportedMediaTypeException;
 import com.yandex.disk.client.exceptions.WebdavClientInitException;
 import com.yandex.disk.client.exceptions.WebdavException;
 import com.yandex.disk.client.exceptions.WebdavFileNotFoundException;
@@ -66,7 +68,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -280,37 +281,34 @@ public class TransportClient {
 
     protected void checkStatusCodes(HttpResponse response, String details)
             throws WebdavNotAuthorizedException, WebdavUserNotInitialized, FileTooBigServerException,
-            FilesLimitExceededServerException, ServerWebdavException, PreconditionFailedException {
+            FilesLimitExceededServerException, ServerWebdavException, PreconditionFailedException, UnknownServerWebdavException {
         StatusLine statusLine = response.getStatusLine();
         int statusCode = statusLine.getStatusCode();
         switch (statusCode) {
-            case HttpStatus.SC_UNAUTHORIZED:  // 401
+            case 401:
                 Log.d(TAG, "Not authorized: "+statusLine.getReasonPhrase());
                 throw new WebdavNotAuthorizedException(statusLine.getReasonPhrase() != null ? statusLine.getReasonPhrase() : "");
-            case HttpStatus.SC_FORBIDDEN:  // 403
+            case 403:
                 Log.d(TAG, "User not initialized: "+statusLine.getReasonPhrase());
                 throw new WebdavUserNotInitialized("Error (http code 403): "+details);
-            case HttpStatus.SC_PRECONDITION_FAILED:  // 412
+            case 412:
                 Log.d(TAG, "Http code 412 (Precondition failed): "+details);
                 throw new PreconditionFailedException("Error (http code 412): "+details);
-            case HttpStatus.SC_REQUEST_TOO_LONG:  // 413
+            case 413:
                 Log.d(TAG, "Http code 413 (File too big): "+details);
                 throw new FileTooBigServerException();
-            case HttpStatus.SC_INSUFFICIENT_STORAGE:  // 507
+            case 507:
                 Log.d(TAG, "Http code 507 (Insufficient Storage): "+details);
                 throw new FilesLimitExceededServerException();
             default:
                 if (statusCode >= 500 && statusCode < 600) {
                     Log.d(TAG, "Server error "+statusCode);
                     throw new ServerWebdavException("Server error while "+details);
+                } else {
+                    Log.d(TAG, "Unknown code "+statusCode);
+                    throw new UnknownServerWebdavException("Server error while "+details);
                 }
         }
-    }
-
-    protected void checkStatusCodesFinal(HttpResponse response, String details)
-            throws WebdavException, IOException {
-        checkStatusCodes(response, details);
-        throw new WebdavException("Unknown error while "+details);
     }
 
     private static final String PROPFIND_REQUEST =
@@ -393,7 +391,7 @@ public class TransportClient {
                         throw new WebdavFileNotFoundException("Directory not found: "+path);
                     default:
                         consumeContent(response);
-                        checkStatusCodesFinal(response, "PROPFIND "+path);
+                        checkStatusCodes(response, "PROPFIND "+path);
                 }
             }
             HttpEntity entity = response.getEntity();
@@ -419,25 +417,30 @@ public class TransportClient {
      * @param file     File to upload
      * @param dir      Folder on the server
      * @param destName Name on the server
-     * @param hash     MD5 hash
+     * @param md5     MD5 hash
      * @return File size on the server. Possibly 0 if no unfinished uploadings
      * @throws IOException           I/O exceptions
      * @throws WebdavException       Webdav exceptions
      * @throws NumberFormatException Invalid size format from the server
      */
-    public long headFile(File file, String dir, String destName, String hash)
-            throws IOException, WebdavException, NumberFormatException {
+    public long headFile(File file, String dir, String destName, String md5, String sha256)
+            throws IOException, NumberFormatException, WebdavUserNotInitialized, UnknownServerWebdavException, PreconditionFailedException,
+            WebdavNotAuthorizedException, ServerWebdavException {
         String url = getUrl()+encodeURL(dir+"/"+destName);
         HttpHead head = new HttpHead(url);
         logMethod(head, ", file "+file);
         creds.addAuthHeader(head);
-        head.addHeader("Etag", hash);
+        head.addHeader("Etag", md5);
+        if (sha256 != null) {
+            head.addHeader("Sha256", sha256);
+        }
         head.addHeader("Size", String.valueOf(file.length()));
         HttpResponse response = httpClient.execute(head);
         consumeContent(response);
         StatusLine statusLine = response.getStatusLine();
         if (statusLine != null) {
-            if (statusLine.getStatusCode() == HttpStatus.SC_OK) {
+            int statusCode = statusLine.getStatusCode();
+            if (statusLine.getStatusCode() == 200) {
 //                Log.d(TAG, "200 "+statusLine.getReasonPhrase()+" for file "+file.getAbsolutePath()+" in dir "+dir);
                 Header[] headers = response.getHeaders("Content-Length");
                 if (headers.length > 0) {
@@ -447,6 +450,9 @@ public class TransportClient {
                 } else {
                     return 0;
                 }
+            } else if (statusCode == 409 || statusCode == 404 || statusCode == 412) {
+                Log.d(TAG, statusLine+" for file "+file.getAbsolutePath()+" in dir "+dir);
+                return 0;
             }
             checkStatusCodes(response, "HEAD "+url);
         }
@@ -463,9 +469,10 @@ public class TransportClient {
      * @throws IOException     I/O exceptions
      */
     public void uploadFile(String localPath, String serverDir, ProgressListener progressListener)
-            throws WebdavException, IOException, NoSuchAlgorithmException {
+            throws IOException, NoSuchAlgorithmException, UnknownServerWebdavException, PreconditionFailedException,
+            IntermediateFolderNotExistException, WebdavUserNotInitialized, ServerWebdavException, WebdavNotAuthorizedException {
         File file = new File(localPath);
-        uploadFile(file, serverDir, file.getName(), makeHash(file, HashType.MD5), progressListener);
+        uploadFile(file, serverDir, file.getName(), makeHash(file, HashType.MD5), null, progressListener);
     }
 
     /**
@@ -474,36 +481,43 @@ public class TransportClient {
      * @param file             Local file
      * @param dir              Server folder to upload
      * @param destFileName     File name on the server
-     * @param hash             MD5 hash
+     * @param md5             MD5 hash
      * @param progressListener Listener to show progress to application
      * @throws WebdavException Server exceptions
      * @throws IOException     I/O exceptions
      */
-    public void uploadFile(File file, String dir, String destFileName, String hash, final ProgressListener progressListener)
+    public void uploadFile(File file, String dir, String destFileName, String md5, String sha256, final ProgressListener progressListener)
             throws IntermediateFolderNotExistException, IOException, WebdavUserNotInitialized, PreconditionFailedException,
-            WebdavNotAuthorizedException, ServerWebdavException {
+            WebdavNotAuthorizedException, ServerWebdavException, UnknownServerWebdavException {
 
         String destName = TextUtils.isEmpty(destFileName) ? file.getName() : destFileName;
         String url = getUrl()+encodeURL(dir+"/"+destName);
         Log.d(TAG, "uploadFile: put to "+getUrl()+dir+"/"+destName);
 
-        HttpPut put = new HttpPut(url);
-        creds.addAuthHeader(put);
-        put.addHeader("Etag", hash);
-
         long uploadedSize;
         try {
-            uploadedSize = headFile(file, dir, destName, hash);
-        } catch (Throwable ex) {
-            Log.w(TAG, "Uploading "+file.getAbsolutePath()+" to "+dir+" failed", ex);
+            uploadedSize = headFile(file, dir, destName, md5, sha256);
+        } catch (NumberFormatException ex) {
+            Log.w(TAG, "Uploading "+file.getAbsolutePath()+" to "+dir+": HEAD failed", ex);
             uploadedSize = 0;
         }
+
+        HttpPut put = new HttpPut(url);
+        creds.addAuthHeader(put);
+        put.addHeader("Etag", md5);
+
+        if (sha256 != null) {
+            Log.d(TAG, "Sha256: "+sha256);
+            put.addHeader("Sha256", sha256);
+        }
+
         if (uploadedSize > 0) {
             StringBuffer contentRange = new StringBuffer();
             contentRange.append("bytes ").append(uploadedSize).append("-").append(file.length()-1).append("/").append(file.length());
             Log.d(TAG, "Content-Range: "+contentRange);
             put.addHeader("Content-Range", contentRange.toString());
         }
+
         HttpEntity entity = new FileProgressHttpEntity(file, uploadedSize, progressListener);
         put.setEntity(entity);
 
@@ -513,10 +527,10 @@ public class TransportClient {
         if (statusLine != null) {
             consumeContent(response);
             switch (statusLine.getStatusCode()) {
-                case HttpStatus.SC_CREATED:  // 201
+                case 201:
                     Log.d(TAG, "File uploaded successfully: "+file);
                     return;
-                case HttpStatus.SC_CONFLICT:  // 409
+                case 409:
                     Log.d(TAG, "Parent not exist for dir "+dir);
                     throw new IntermediateFolderNotExistException("Parent folder not exists for '"+dir+"'");
                 default:
@@ -527,13 +541,13 @@ public class TransportClient {
 
     public void downloadFile(String path, File saveTo, ProgressListener progressListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException {
+            CancelledDownloadException, UnknownServerWebdavException {
         downloadFile(path, saveTo, 0, 0, progressListener);
     }
 
     public void downloadFile(String path, File saveTo, long length, long fileSize, ProgressListener progressListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException {
+            CancelledDownloadException, UnknownServerWebdavException {
         String url = getUrl()+encodeURL(path);
         HttpGet get = new HttpGet(url);
         logMethod(get, " to "+saveTo);
@@ -668,7 +682,8 @@ public class TransportClient {
      * @see <a href="http://www.webdav.org/specs/rfc4918.html#METHOD_MKCOL">RFC 4918</a>
      */
     public void makeFolder(String dir)
-            throws WebdavException, IOException {
+            throws IOException, DuplicateFolderException, IntermediateFolderNotExistException, WebdavUserNotInitialized, PreconditionFailedException,
+            WebdavNotAuthorizedException, ServerWebdavException, UnsupportedMediaTypeException, UnknownServerWebdavException {
         String url = getUrl()+encodeURL(dir);
         HttpMkcol mkcol = new HttpMkcol(url);
         logMethod(mkcol);
@@ -687,7 +702,7 @@ public class TransportClient {
                 case 409:
                     throw new IntermediateFolderNotExistException("Parent folder not exists for '"+dir+"'");
                 case 415:
-                    throw new WebdavException("Folder '"+dir+"' creation error (http code 415)");
+                    throw new UnsupportedMediaTypeException("Folder '"+dir+"' creation error (http code 415)");
                 default:
                     checkStatusCodes(response, "MKCOL '"+dir+"'");
             }
@@ -718,7 +733,7 @@ public class TransportClient {
                 case 404:
                     throw new WebdavFileNotFoundException("'"+path+"' cannot be deleted");
                 default:
-                    checkStatusCodesFinal(response, "DELETE '"+path+"'");
+                    checkStatusCodes(response, "DELETE '"+path+"'");
             }
         }
     }
@@ -742,7 +757,7 @@ public class TransportClient {
                 case 409:
                     throw new DuplicateFolderException("Folder "+dest+" already exist");
                 default:
-                    checkStatusCodesFinal(response, "MOVE '"+src+"' to '"+dest+"'");
+                    checkStatusCodes(response, "MOVE '"+src+"' to '"+dest+"'");
             }
         }
     }
@@ -771,7 +786,7 @@ public class TransportClient {
                 }
             }
         }
-        checkStatusCodesFinal(httpResponse, "publish");
+        checkStatusCodes(httpResponse, "publish");
         return null;    // not happen
     }
 
@@ -786,7 +801,7 @@ public class TransportClient {
         if (statusLine != null && statusLine.getStatusCode() == 200) {
             return;
         }
-        checkStatusCodesFinal(httpResponse, "unpublish");
+        checkStatusCodes(httpResponse, "unpublish");
     }
 
     public static class PropFind extends HttpPost {
