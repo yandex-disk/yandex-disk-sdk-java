@@ -41,6 +41,7 @@ import org.apache.http.client.methods.HttpHead;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.conn.ClientConnectionManager;
 import org.apache.http.conn.params.ConnManagerParams;
 import org.apache.http.conn.scheme.PlainSocketFactory;
@@ -198,6 +199,16 @@ public class TransportClient {
             return super.isRedirectRequested(httpResponse, httpContext);
         }
     };
+
+    private HttpResponse executeRequest(HttpUriRequest request)
+            throws IOException {
+        return httpClient.execute(request, (HttpContext)null);
+    }
+
+    private HttpResponse executeRequest(HttpUriRequest request, HttpContext httpContext)
+            throws IOException {
+        return httpClient.execute(request, httpContext);
+    }
 
     public void shutdown() {
         httpClient.getConnectionManager().shutdown();
@@ -379,7 +390,7 @@ public class TransportClient {
             propFind.setHeader(WEBDAV_PROTO_DEPTH, "1");
             propFind.setEntity(new StringEntity(PROPFIND_REQUEST));
 
-            HttpResponse response = httpClient.execute(propFind);
+            HttpResponse response = executeRequest(propFind);
             StatusLine statusLine = response.getStatusLine();
             if (statusLine != null) {
                 int code = statusLine.getStatusCode();
@@ -435,7 +446,7 @@ public class TransportClient {
             head.addHeader("Sha256", sha256);
         }
         head.addHeader("Size", String.valueOf(file.length()));
-        HttpResponse response = httpClient.execute(head);
+        HttpResponse response = executeRequest(head);
         consumeContent(response);
         StatusLine statusLine = response.getStatusLine();
         if (statusLine != null) {
@@ -522,7 +533,7 @@ public class TransportClient {
         put.setEntity(entity);
 
         logMethod(put, ", file to upload "+file);
-        HttpResponse response = httpClient.execute(put);
+        HttpResponse response = executeRequest(put);
         StatusLine statusLine = response.getStatusLine();
         if (statusLine != null) {
             consumeContent(response);
@@ -564,7 +575,7 @@ public class TransportClient {
         }
 
         boolean partialContent = false;
-        HttpResponse httpResponse = httpClient.execute(get);
+        HttpResponse httpResponse = executeRequest(get);
         StatusLine statusLine = httpResponse.getStatusLine();
         if (statusLine != null) {
             int statusCode = statusLine.getStatusCode();
@@ -688,7 +699,7 @@ public class TransportClient {
         HttpMkcol mkcol = new HttpMkcol(url);
         logMethod(mkcol);
         creds.addAuthHeader(mkcol);
-        HttpResponse response = httpClient.execute(mkcol);
+        HttpResponse response = executeRequest(mkcol);
         consumeContent(response);
         StatusLine statusLine = response.getStatusLine();
         if (statusLine != null) {
@@ -722,7 +733,7 @@ public class TransportClient {
         HttpDelete delete = new HttpDelete(url);
         logMethod(delete);
         creds.addAuthHeader(delete);
-        HttpResponse response = httpClient.execute(delete);
+        HttpResponse response = executeRequest(delete);
         consumeContent(response);
         StatusLine statusLine = response.getStatusLine();
         if (statusLine != null) {
@@ -744,7 +755,7 @@ public class TransportClient {
         move.addHeader("Destination", encodeURL(dest));
         logMethod(move, "to "+encodeURL(dest));
         creds.addAuthHeader(move);
-        HttpResponse response = httpClient.execute(move);
+        HttpResponse response = executeRequest(move);
         consumeContent(response);
         StatusLine statusLine = response.getStatusLine();
         if (statusLine != null) {
@@ -771,7 +782,7 @@ public class TransportClient {
 
         HttpContext shareHttpContext = new BasicHttpContext();
         shareHttpContext.setAttribute(NO_REDIRECT_CONTEXT, true);
-        HttpResponse httpResponse = httpClient.execute(post, shareHttpContext);
+        HttpResponse httpResponse = executeRequest(post, shareHttpContext);
         consumeContent(httpResponse);
 
         StatusLine statusLine = httpResponse.getStatusLine();
@@ -795,7 +806,7 @@ public class TransportClient {
         HttpPost post = new HttpPost(getUrl()+encodeURL(path)+"?unpublish");
         logMethod(post, "(unpublish)");
         creds.addAuthHeader(post);
-        HttpResponse httpResponse = httpClient.execute(post);
+        HttpResponse httpResponse = executeRequest(post);
         consumeContent(httpResponse);
         StatusLine statusLine = httpResponse.getStatusLine();
         if (statusLine != null && statusLine.getStatusCode() == 200) {
