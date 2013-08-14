@@ -728,7 +728,8 @@ public class TransportClient {
      * @throws IOException     I/O exceptions
      */
     public void delete(String path)
-            throws WebdavException, IOException {
+            throws IOException, WebdavFileNotFoundException, WebdavUserNotInitialized, UnknownServerWebdavException,
+            PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException {
         String url = getUrl()+encodeURL(path);
         HttpDelete delete = new HttpDelete(url);
         logMethod(delete);
