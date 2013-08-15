@@ -758,21 +758,27 @@ public class TransportClient {
     public void move(String src, String dest)
             throws WebdavException, IOException {
         Move move = new Move(getUrl()+encodeURL(src));
-        move.addHeader("Destination", encodeURL(dest));
+        move.setHeader("Destination", encodeURL(dest));
+        move.setHeader("Overwrite", "F");
         logMethod(move, "to "+encodeURL(dest));
         creds.addAuthHeader(move);
         HttpResponse response = executeRequest(move);
         consumeContent(response);
         StatusLine statusLine = response.getStatusLine();
         if (statusLine != null) {
-            switch (statusLine.getStatusCode()) {
+            int statusCode = statusLine.getStatusCode();
+            switch (statusCode) {
                 case 201:
                     Log.d(TAG, "Rename successfully completed");
+                    return;
+                case 202:
+                case 207:
+                    Log.d(TAG, "HTTP code "+statusCode+": "+statusLine);
                     return;
                 case 404:
                     throw new WebdavFileNotFoundException("'"+src+"' not found");
                 case 409:
-                    throw new DuplicateFolderException("Folder "+dest+" already exist");
+                    throw new DuplicateFolderException("File or folder "+dest+" already exist");
                 default:
                     checkStatusCodes(response, "MOVE '"+src+"' to '"+dest+"'");
             }
