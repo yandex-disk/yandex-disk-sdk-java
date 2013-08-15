@@ -264,10 +264,15 @@ public class TransportClient {
     }
 
     public static String makeHash(File file, HashType hashType)
-            throws IOException, NoSuchAlgorithmException {
+            throws IOException {
         long time = System.currentTimeMillis();
         FileInputStream is = new FileInputStream(file);
-        MessageDigest digest = MessageDigest.getInstance(hashType.name());
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance(hashType.name());
+        } catch (NoSuchAlgorithmException ex) {
+            throw new RuntimeException(ex);
+        }
         byte[] buf = new byte[8192];
         int count;
         while ((count = is.read(buf)) > 0) {
@@ -480,7 +485,7 @@ public class TransportClient {
      * @throws IOException     I/O exceptions
      */
     public void uploadFile(String localPath, String serverDir, ProgressListener progressListener)
-            throws IOException, NoSuchAlgorithmException, UnknownServerWebdavException, PreconditionFailedException,
+            throws IOException, UnknownServerWebdavException, PreconditionFailedException,
             IntermediateFolderNotExistException, WebdavUserNotInitialized, ServerWebdavException, WebdavNotAuthorizedException {
         File file = new File(localPath);
         uploadFile(file, serverDir, file.getName(), makeHash(file, HashType.MD5), null, progressListener);
