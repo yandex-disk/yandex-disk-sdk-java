@@ -439,6 +439,8 @@ public class TransportClient {
                 Log.d(TAG, "countOnPage="+countOnPage);
             } catch (XmlPullParserException ex) {
                 throw new WebdavException(ex);
+            } finally {
+                consumeContent(response);
             }
             if (countOnPage != itemsPerPage) {
                 itemsFinished = true;

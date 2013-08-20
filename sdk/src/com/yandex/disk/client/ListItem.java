@@ -231,6 +231,15 @@ public class ListItem implements Parcelable {
         return fullPath;
     }
 
+    public String getName() {
+        String name = fullPath;
+        int idx = name.lastIndexOf('/')+1;
+        if (idx != -1) {
+            name = name.substring(idx);
+        }
+        return name;
+    }
+
     public String getDisplayName() {
         return displayName;
     }

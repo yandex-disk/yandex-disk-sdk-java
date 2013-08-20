@@ -37,6 +37,8 @@ public class ListParser extends Parser {
     public void tagStart(String path) {
         if ("/multistatus/response".equals(path)) {
             builder = new ListItem.Builder();
+        } else if ("/multistatus/response/propstat".equals(path)) {
+            isStatusOK = false;
         }
     }
 
@@ -51,6 +53,11 @@ public class ListParser extends Parser {
             builder.addFullPath(href);
         } else if ("/multistatus/response/propstat/status".equals(path)) {
             isStatusOK = "HTTP/1.1 200 OK".equals(text);
+        } else if ("/multistatus/response".equals(path)) {
+            ListItem item = builder.build();
+            if (handler.handleItem(item)) {
+                parsedCount++;
+            }
         } else if (isStatusOK) {
             if ("/multistatus/response/propstat/prop/displayname".equals(path)) {
                 builder.addDisplayName(text);
@@ -69,21 +76,15 @@ public class ListParser extends Parser {
             } else if ("/multistatus/response/propstat/prop/getcontenttype".equals(path)) {
                 builder.addContentType(text);
             } else if ("/multistatus/response/propstat/prop/shared".equals(path)) {
-                builder.addShared(parseBoolean(text));
+                builder.addShared(Boolean.parseBoolean(text));
             } else if ("/multistatus/response/propstat/prop/readonly".equals(path)) {
-                builder.addReadOnly(parseBoolean(text));
+                builder.addReadOnly(Boolean.parseBoolean(text));
             } else if ("/multistatus/response/propstat/prop/owner_name".equals(path)) {
                 builder.addOwnerName(text);
             } else if ("/multistatus/response/propstat/prop/public_url".equals(path)) {
                 builder.addPublicUrl(text);
             } else if ("/multistatus/response/propstat/prop/etime".equals(path)) {
                 builder.addEtime(text);
-            }
-        } else if ("/multistatus/response".equals(path)) {
-            ListItem item = builder.build();
-            Log.d(TAG, "item: "+item);
-            if (handler.handleItem(item)) {
-                parsedCount++;
             }
         }
     }
