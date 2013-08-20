@@ -21,10 +21,10 @@ public class ListItem implements Parcelable {
 
     private String displayName, fullPath, etag, contentType, ownerName, publicUrl;
     private boolean isCollection, aliasEnabled, shared, readOnly, visible;
-    private long contentLength, lastUpdated;
+    private long contentLength, lastUpdated, etime;
 
     public static final class Builder {
-        private String fullPath, displayName, contentLength, lastModified, etag, contentType, ownerName, publicUrl;
+        private String fullPath, displayName, contentLength, lastModified, etag, contentType, ownerName, publicUrl, etime;
         private boolean isCollection, aliasEnabled, visible, shared, readOnly;
 
         public void addFullPath(String fullPath) {
@@ -79,14 +79,19 @@ public class ListItem implements Parcelable {
             this.publicUrl = publicUrl;
         }
 
+        public void addEtime(String etime) {
+            this.etime = etime;
+        }
+
         public ListItem build() {
             return new ListItem(fullPath, displayName, contentLength, lastModified, isCollection, etag,
-                                contentType, shared, ownerName, aliasEnabled, readOnly, visible, publicUrl);
+                                contentType, shared, ownerName, aliasEnabled, readOnly, visible, publicUrl, etime);
         }
     }
 
     private ListItem(String fullPath, String displayName, String contentLength, String lastUpdated, boolean isCollection, String etag,
-                     String contentType, boolean shared, String ownerName, boolean aliasEnabled, boolean readOnly, boolean visible, String publicUrl) {
+                     String contentType, boolean shared, String ownerName, boolean aliasEnabled, boolean readOnly, boolean visible,
+                     String publicUrl, String etime) {
         this.fullPath = fullPath;
         if (displayName != null) {
             this.displayName = displayName;
@@ -108,10 +113,16 @@ public class ListItem implements Parcelable {
         this.readOnly = readOnly;
         this.visible = visible;
         this.publicUrl = publicUrl;
+        try {
+            this.etime = Long.parseLong(etime);
+        } catch (NumberFormatException nfe) {
+            this.etime = 0;
+        }
     }
 
     private ListItem(String fullPath, String displayName, long contentLength, long lastUpdated, boolean isCollection, String etag,
-                     boolean aliasEnabled, String contentType, boolean shared, boolean readonly, String ownerName, String publicUrl) {
+                     boolean aliasEnabled, String contentType, boolean shared, boolean readonly, String ownerName, String publicUrl,
+                     long etime) {
         this.fullPath = fullPath;
         this.displayName = displayName;
         this.contentLength = contentLength;
@@ -124,6 +135,7 @@ public class ListItem implements Parcelable {
         this.readOnly = readonly;
         this.ownerName = ownerName;
         this.publicUrl = publicUrl;
+        this.etime = etime;
     }
 
     private static final Map<String, Integer> MONTH = new HashMap<String, Integer>();
@@ -198,6 +210,7 @@ public class ListItem implements Parcelable {
         parcel.writeByte((byte) (readOnly ? 1 : 0));
         parcel.writeString(ownerName);
         parcel.writeString(publicUrl);
+        parcel.writeLong(etime);
     }
 
     public static final Parcelable.Creator<ListItem> CREATOR = new Parcelable.Creator<ListItem>() {
@@ -206,7 +219,7 @@ public class ListItem implements Parcelable {
             return new ListItem(parcel.readString(), parcel.readString(), parcel.readLong(),
                                 parcel.readLong(), parcel.readByte() > 0, parcel.readString(), parcel.readByte() > 0,
                                 parcel.readString(), parcel.readByte() > 0, parcel.readByte() > 0,
-                                parcel.readString(), parcel.readString());
+                                parcel.readString(), parcel.readString(), parcel.readLong());
         }
 
         public ListItem[] newArray(int size) {
@@ -267,5 +280,9 @@ public class ListItem implements Parcelable {
 
     public String getPublicUrl() {
         return publicUrl;
+    }
+
+    public long getEtime() {
+        return etime;
     }
 }

@@ -24,6 +24,8 @@ import com.yandex.disk.client.exceptions.UnsupportedMediaTypeException;
 import com.yandex.disk.client.exceptions.WebdavClientInitException;
 import com.yandex.disk.client.exceptions.WebdavException;
 import com.yandex.disk.client.exceptions.WebdavFileNotFoundException;
+import com.yandex.disk.client.exceptions.WebdavForbiddenException;
+import com.yandex.disk.client.exceptions.WebdavInvalidUserException;
 import com.yandex.disk.client.exceptions.WebdavNotAuthorizedException;
 import com.yandex.disk.client.exceptions.WebdavUserNotInitialized;
 import org.apache.http.Header;
@@ -342,6 +344,7 @@ public class TransportClient {
                     "<m:shared/>"+
                     "<m:readonly/>"+
                     "<m:public_url/>"+
+                    "<m:etime/>"+
                     "</d:prop>"+
                     "</d:propfind>";
 
@@ -355,11 +358,16 @@ public class TransportClient {
      * @throws CancelledPropfindException Cancelled by user
      * @throws WebdavException            Server exceptions
      * @throws IOException                I/O exceptions
-     * @see #getList(String, int, ListParsingHandler)
+     * @see #getList(String, int, String, String, ListParsingHandler)
      */
     public void getList(String path, ListParsingHandler handler)
             throws WebdavException, IOException {
-        getList(path, MAX_ITEMS_PER_PAGE, handler);
+        getList(path, MAX_ITEMS_PER_PAGE, null, null, handler);
+    }
+
+    public void getList(String path, int itemsPerPage, ListParsingHandler handler)
+            throws WebdavException, IOException {
+        getList(path, itemsPerPage, null, null, handler);
     }
 
     /**
@@ -372,7 +380,7 @@ public class TransportClient {
      * @throws WebdavException            Server exceptions
      * @throws IOException                I/O exceptions
      */
-    public void getList(String path, int itemsPerPage, ListParsingHandler handler)
+    public void getList(String path, int itemsPerPage, String sortBy, String orderBy, ListParsingHandler handler)
             throws WebdavException, IOException {
         Log.d(TAG, "getList for "+path);
 
@@ -387,6 +395,9 @@ public class TransportClient {
             String url = getUrl()+encodeURL(path);
             if (itemsPerPage != MAX_ITEMS_PER_PAGE) {
                 url += "?offset="+offset+"&amount="+itemsPerPage;
+                if (sortBy != null && orderBy != null) {
+                    url += "&sort="+sortBy+"&order="+orderBy;
+                }
             }
 
             PropFind propFind = new PropFind(url);
@@ -402,6 +413,15 @@ public class TransportClient {
                 switch (code) {
                     case 207:
                         break;
+                    case 401:
+                        consumeContent(response);
+                        throw new WebdavNotAuthorizedException(statusLine.getReasonPhrase() != null ? statusLine.getReasonPhrase() : "");
+                    case 402:
+                        consumeContent(response);
+                        throw new WebdavInvalidUserException();
+                    case 403:
+                        consumeContent(response);
+                        throw new WebdavForbiddenException();
                     case 404:
                         consumeContent(response);
                         throw new WebdavFileNotFoundException("Directory not found: "+path);
