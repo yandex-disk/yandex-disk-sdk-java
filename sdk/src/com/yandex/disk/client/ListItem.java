@@ -24,34 +24,35 @@ public class ListItem implements Parcelable {
     private long contentLength, lastUpdated, etime;
 
     public static final class Builder {
-        private String fullPath, displayName, contentLength, lastModified, etag, contentType, ownerName, publicUrl, etime;
+        private String fullPath, displayName, lastModified, etag, contentType, ownerName, publicUrl;
+        private long contentLength, etime;
         private boolean isCollection, aliasEnabled, visible, shared, readOnly;
 
-        public void addFullPath(String fullPath) {
+        public void setFullPath(String fullPath) {
             this.fullPath = fullPath;
         }
 
-        public void addDisplayName(String displayName) {
+        public void setDisplayName(String displayName) {
             this.displayName = displayName;
         }
 
-        public void addContentLength(String contentLength) {
+        public void setContentLength(long contentLength) {
             this.contentLength = contentLength;
         }
 
-        public void addLastModified(String lastModified) {
+        public void setLastModified(String lastModified) {
             this.lastModified = lastModified;
         }
 
-        public void addEtag(String etag) {
+        public void setEtag(String etag) {
             this.etag = etag;
         }
 
-        public void addContentType(String contentType) {
+        public void setContentType(String contentType) {
             this.contentType = contentType;
         }
 
-        public void addOwnerName(String ownerName) {
+        public void setOwnerName(String ownerName) {
             this.ownerName = ownerName;
         }
 
@@ -59,27 +60,27 @@ public class ListItem implements Parcelable {
             isCollection = true;
         }
 
-        public void addAliasEnabled(boolean aliasEnabled) {
+        public void setAliasEnabled(boolean aliasEnabled) {
             this.aliasEnabled = aliasEnabled;
         }
 
-        public void addVisible(boolean visible) {
+        public void setVisible(boolean visible) {
             this.visible = visible;
         }
 
-        public void addShared(boolean shared) {
+        public void setShared(boolean shared) {
             this.shared = shared;
         }
 
-        public void addReadOnly(boolean readOnly) {
+        public void setReadOnly(boolean readOnly) {
             this.readOnly = readOnly;
         }
 
-        public void addPublicUrl(String publicUrl) {
+        public void setPublicUrl(String publicUrl) {
             this.publicUrl = publicUrl;
         }
 
-        public void addEtime(String etime) {
+        public void setEtime(long etime) {
             this.etime = etime;
         }
 
@@ -89,20 +90,16 @@ public class ListItem implements Parcelable {
         }
     }
 
-    private ListItem(String fullPath, String displayName, String contentLength, String lastUpdated, boolean isCollection, String etag,
+    private ListItem(String fullPath, String displayName, long contentLength, String lastUpdated, boolean isCollection, String etag,
                      String contentType, boolean shared, String ownerName, boolean aliasEnabled, boolean readOnly, boolean visible,
-                     String publicUrl, String etime) {
+                     String publicUrl, long etime) {
         this.fullPath = fullPath;
         if (displayName != null) {
             this.displayName = displayName;
         } else {
             this.displayName = new File(fullPath).getName();
         }
-        try {
-            this.contentLength = Long.parseLong(contentLength);
-        } catch (NumberFormatException nfe) {
-            this.contentLength = 0;
-        }
+        this.contentLength = contentLength;
         this.lastUpdated = parseDateTime(lastUpdated);
         this.isCollection = isCollection;
         this.etag = etag;
@@ -113,11 +110,7 @@ public class ListItem implements Parcelable {
         this.readOnly = readOnly;
         this.visible = visible;
         this.publicUrl = publicUrl;
-        try {
-            this.etime = Long.parseLong(etime);
-        } catch (NumberFormatException nfe) {
-            this.etime = 0;
-        }
+        this.etime = etime;
     }
 
     private ListItem(String fullPath, String displayName, long contentLength, long lastUpdated, boolean isCollection, String etag,
@@ -232,12 +225,7 @@ public class ListItem implements Parcelable {
     }
 
     public String getName() {
-        String name = fullPath;
-        int idx = name.lastIndexOf('/')+1;
-        if (idx != -1) {
-            name = name.substring(idx);
-        }
-        return name;
+        return new File(fullPath).getName();
     }
 
     public String getDisplayName() {
