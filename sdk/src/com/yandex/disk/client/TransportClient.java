@@ -31,7 +31,6 @@ import com.yandex.disk.client.exceptions.WebdavUserNotInitialized;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
 import org.apache.http.HttpVersion;
 import org.apache.http.StatusLine;
 import org.apache.http.client.HttpClient;
@@ -607,16 +606,16 @@ public class TransportClient {
         if (statusLine != null) {
             int statusCode = statusLine.getStatusCode();
             switch (statusCode) {
-                case HttpStatus.SC_OK:
+                case 200:
                     // OK
                     break;
-                case HttpStatus.SC_PARTIAL_CONTENT:
+                case 206:
                     partialContent = true;
                     break;
-                case HttpStatus.SC_NOT_FOUND:
+                case 404:
                     consumeContent(httpResponse);
                     throw new FileDownloadException("error while downloading file "+url);
-                case HttpStatus.SC_REQUESTED_RANGE_NOT_SATISFIABLE:
+                case 416:
                     consumeContent(httpResponse);
                     throw new RangeNotSatisfiableException("error while downloading file "+url);
                 default:
