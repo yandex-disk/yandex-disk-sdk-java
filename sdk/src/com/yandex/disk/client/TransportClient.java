@@ -201,12 +201,12 @@ public class TransportClient {
         }
     };
 
-    private HttpResponse executeRequest(HttpUriRequest request)
+    protected HttpResponse executeRequest(HttpUriRequest request)
             throws IOException {
         return httpClient.execute(request, (HttpContext)null);
     }
 
-    private HttpResponse executeRequest(HttpUriRequest request, HttpContext httpContext)
+    protected HttpResponse executeRequest(HttpUriRequest request, HttpContext httpContext)
             throws IOException {
         return httpClient.execute(request, httpContext);
     }
@@ -252,11 +252,11 @@ public class TransportClient {
         return sb.toString().replace("+", "%20");
     }
 
-    private static void logMethod(HttpRequestBase method) {
+    protected static void logMethod(HttpRequestBase method) {
         logMethod(method, null);
     }
 
-    private static void logMethod(HttpRequestBase method, String add) {
+    protected static void logMethod(HttpRequestBase method, String add) {
         Log.d(TAG, "logMethod(): "+method.getMethod()+": "+method.getURI()+(add != null ? " "+add : ""));
     }
 
