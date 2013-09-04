@@ -31,7 +31,6 @@ import com.yandex.disk.client.exceptions.WebdavUserNotInitialized;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
 import org.apache.http.HttpVersion;
 import org.apache.http.StatusLine;
 import org.apache.http.client.HttpClient;
@@ -94,7 +93,7 @@ public class TransportClient {
         }
     }
 
-    protected String userAgent = "Webdav Android Client Example/1.0";
+    protected static final String userAgent = "Webdav Android Client Example/1.0";
     protected static final String LOCATION_HEADER = "Location";
     protected static final String NO_REDIRECT_CONTEXT = "yandex.no-redirect";
     protected static final String WEBDAV_PROTO_DEPTH = "Depth";
@@ -116,20 +115,6 @@ public class TransportClient {
         return new TransportClient(context, credentials, UPLOAD_NETWORK_TIMEOUT);
     }
 
-//    public static TransportClient getInstance(Context context, Credentials credentials, String server, int timeout)
-//            throws WebdavClientInitException {
-//        TransportClient client = new TransportClient(context, credentials, timeout);
-//        try {
-//            serverURL = new URL(server);
-//        } catch (MalformedURLException ex) {
-//            throw new RuntimeException(ex);
-//        }
-//        return client;
-//    }
-
-    /**
-     * For temporary use in WebdavClient while migration isn't finished yet
-     */
     public TransportClient(Context context, Credentials credentials, HttpClient httpClient)
             throws WebdavClientInitException {
         this.context = context;
@@ -138,6 +123,11 @@ public class TransportClient {
     }
 
     protected TransportClient(Context context, Credentials credentials, int timeout)
+            throws WebdavClientInitException {
+        this(context, credentials, userAgent, timeout);
+    }
+
+    protected TransportClient(Context context, Credentials credentials, String userAgent, int timeout)
             throws WebdavClientInitException {
         this.context = context;
         this.creds = credentials;
@@ -161,7 +151,7 @@ public class TransportClient {
         try {
             sf = new SSLSocketFactoryWithTimeout(timeout);
         } catch (GeneralSecurityException ex) {
-            Log.e(TAG, "", ex);
+            Log.e(TAG, "getNewHttpClient", ex);
             throw new WebdavClientInitException();
         }
         sf.setHostnameVerifier(SSLSocketFactory.STRICT_HOSTNAME_VERIFIER);
@@ -607,16 +597,16 @@ public class TransportClient {
         if (statusLine != null) {
             int statusCode = statusLine.getStatusCode();
             switch (statusCode) {
-                case HttpStatus.SC_OK:
+                case 200:
                     // OK
                     break;
-                case HttpStatus.SC_PARTIAL_CONTENT:
+                case 206:
                     partialContent = true;
                     break;
-                case HttpStatus.SC_NOT_FOUND:
+                case 404:
                     consumeContent(httpResponse);
                     throw new FileDownloadException("error while downloading file "+url);
-                case HttpStatus.SC_REQUESTED_RANGE_NOT_SATISFIABLE:
+                case 416:
                     consumeContent(httpResponse);
                     throw new RangeNotSatisfiableException("error while downloading file "+url);
                 default:
