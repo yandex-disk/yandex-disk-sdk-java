@@ -816,12 +816,13 @@ public class TransportClient {
             switch (statusCode){
                 case 302:
                     Header[] locationHeaders = httpResponse.getHeaders(LOCATION_HEADER);
-                    String publishedFileUrl = null;
                     if (locationHeaders.length == 1) {
-                        publishedFileUrl = httpResponse.getHeaders(LOCATION_HEADER)[0].getValue();
-                        Log.d(TAG, "publish: " + publishedFileUrl);
+                        String url = httpResponse.getHeaders(LOCATION_HEADER)[0].getValue();
+                        Log.d(TAG, "publish: "+url);
+                        return url;
                     }
-                    return publishedFileUrl;
+                    checkStatusCodes(httpResponse, "publish");
+                    break;
                 case 403:
                     throw new WebdavSharingForbiddenException("Folder "+path+" can't be shared");
                 default:
