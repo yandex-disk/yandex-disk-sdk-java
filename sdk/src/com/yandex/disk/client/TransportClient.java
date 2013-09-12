@@ -28,6 +28,7 @@ import com.yandex.disk.client.exceptions.WebdavForbiddenException;
 import com.yandex.disk.client.exceptions.WebdavInvalidUserException;
 import com.yandex.disk.client.exceptions.WebdavNotAuthorizedException;
 import com.yandex.disk.client.exceptions.WebdavUserNotInitialized;
+import com.yandex.disk.client.exceptions.WebdavSharingForbiddenException;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -811,17 +812,23 @@ public class TransportClient {
 
         StatusLine statusLine = httpResponse.getStatusLine();
         if (statusLine != null) {
-            int code = statusLine.getStatusCode();
-            if (code == 302) {
-                Header[] locationHeaders = httpResponse.getHeaders(LOCATION_HEADER);
-                if (locationHeaders.length == 1) {
-                    String url = httpResponse.getHeaders(LOCATION_HEADER)[0].getValue();
-                    Log.d(TAG, "publish: "+url);
-                    return url;
-                }
+            int statusCode = statusLine.getStatusCode();
+            switch (statusCode){
+                case 302:
+                    Header[] locationHeaders = httpResponse.getHeaders(LOCATION_HEADER);
+                    if (locationHeaders.length == 1) {
+                        String url = httpResponse.getHeaders(LOCATION_HEADER)[0].getValue();
+                        Log.d(TAG, "publish: "+url);
+                        return url;
+                    }
+                    checkStatusCodes(httpResponse, "publish");
+                    break;
+                case 403:
+                    throw new WebdavSharingForbiddenException("Folder "+path+" can't be shared");
+                default:
+                    checkStatusCodes(httpResponse, "publish");
             }
         }
-        checkStatusCodes(httpResponse, "publish");
         return null;    // not happen
     }
 
