@@ -28,6 +28,7 @@ import com.yandex.disk.client.exceptions.WebdavForbiddenException;
 import com.yandex.disk.client.exceptions.WebdavInvalidUserException;
 import com.yandex.disk.client.exceptions.WebdavNotAuthorizedException;
 import com.yandex.disk.client.exceptions.WebdavUserNotInitialized;
+import com.yandex.disk.client.exceptions.WebdavSharingForbiddenException;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -255,9 +256,8 @@ public class TransportClient {
         MD5, SHA256
     }
 
-    public static String makeHash(File file, HashType hashType)
+    public static byte[] makeHashBytes(File file, HashType hashType)
             throws IOException {
-        long time = System.currentTimeMillis();
         FileInputStream is = new FileInputStream(file);
         MessageDigest digest;
         try {
@@ -270,12 +270,21 @@ public class TransportClient {
         while ((count = is.read(buf)) > 0) {
             digest.update(buf, 0, count);
         }
-        String hash = hash(digest.digest());
+        return digest.digest();
+    }
+
+    public static String makeHash(File file, HashType hashType)
+            throws IOException {
+        long time = System.currentTimeMillis();
+        String hash = hash(makeHashBytes(file, hashType));
         Log.d(TAG, hashType.name()+": "+file.getAbsolutePath()+" hash="+hash+" time="+(System.currentTimeMillis()-time));
         return hash;
     }
 
     public static String hash(byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
         StringBuilder out = new StringBuilder();
         for (byte b : bytes) {
             String n = Integer.toHexString(b & 0x000000FF);
@@ -583,9 +592,9 @@ public class TransportClient {
 
         if (length > 0) {
             StringBuffer contentRange = new StringBuffer();
-            contentRange.append("bytes ").append(length).append("-");
+            contentRange.append("bytes=").append(length).append("-");
             if (fileSize > 0) {
-                contentRange.append(fileSize-1).append("/").append(fileSize);
+                contentRange.append(fileSize-1);
             }
             Log.d(TAG, "Range: "+contentRange);
             get.addHeader("Range", contentRange.toString());
@@ -811,17 +820,23 @@ public class TransportClient {
 
         StatusLine statusLine = httpResponse.getStatusLine();
         if (statusLine != null) {
-            int code = statusLine.getStatusCode();
-            if (code == 302) {
-                Header[] locationHeaders = httpResponse.getHeaders(LOCATION_HEADER);
-                if (locationHeaders.length == 1) {
-                    String url = httpResponse.getHeaders(LOCATION_HEADER)[0].getValue();
-                    Log.d(TAG, "publish: "+url);
-                    return url;
-                }
+            int statusCode = statusLine.getStatusCode();
+            switch (statusCode){
+                case 302:
+                    Header[] locationHeaders = httpResponse.getHeaders(LOCATION_HEADER);
+                    if (locationHeaders.length == 1) {
+                        String url = httpResponse.getHeaders(LOCATION_HEADER)[0].getValue();
+                        Log.d(TAG, "publish: "+url);
+                        return url;
+                    }
+                    checkStatusCodes(httpResponse, "publish");
+                    break;
+                case 403:
+                    throw new WebdavSharingForbiddenException("Folder "+path+" can't be shared");
+                default:
+                    checkStatusCodes(httpResponse, "publish");
             }
         }
-        checkStatusCodes(httpResponse, "publish");
         return null;    // not happen
     }
 
