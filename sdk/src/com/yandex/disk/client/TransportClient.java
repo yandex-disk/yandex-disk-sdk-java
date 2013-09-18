@@ -255,9 +255,8 @@ public class TransportClient {
         MD5, SHA256
     }
 
-    public static String makeHash(File file, HashType hashType)
+    public static byte[] makeHashBytes(File file, HashType hashType)
             throws IOException {
-        long time = System.currentTimeMillis();
         FileInputStream is = new FileInputStream(file);
         MessageDigest digest;
         try {
@@ -270,12 +269,21 @@ public class TransportClient {
         while ((count = is.read(buf)) > 0) {
             digest.update(buf, 0, count);
         }
-        String hash = hash(digest.digest());
+        return digest.digest();
+    }
+
+    public static String makeHash(File file, HashType hashType)
+            throws IOException {
+        long time = System.currentTimeMillis();
+        String hash = hash(makeHashBytes(file, hashType));
         Log.d(TAG, hashType.name()+": "+file.getAbsolutePath()+" hash="+hash+" time="+(System.currentTimeMillis()-time));
         return hash;
     }
 
     public static String hash(byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
         StringBuilder out = new StringBuilder();
         for (byte b : bytes) {
             String n = Integer.toHexString(b & 0x000000FF);
@@ -583,9 +591,9 @@ public class TransportClient {
 
         if (length > 0) {
             StringBuffer contentRange = new StringBuffer();
-            contentRange.append("bytes ").append(length).append("-");
+            contentRange.append("bytes=").append(length).append("-");
             if (fileSize > 0) {
-                contentRange.append(fileSize-1).append("/").append(fileSize);
+                contentRange.append(fileSize-1);
             }
             Log.d(TAG, "Range: "+contentRange);
             get.addHeader("Range", contentRange.toString());
