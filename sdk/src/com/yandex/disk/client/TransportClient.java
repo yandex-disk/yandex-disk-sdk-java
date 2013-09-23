@@ -258,19 +258,26 @@ public class TransportClient {
 
     public static byte[] makeHashBytes(File file, HashType hashType)
             throws IOException {
-        FileInputStream is = new FileInputStream(file);
-        MessageDigest digest;
+        FileInputStream is = null;
         try {
-            digest = MessageDigest.getInstance(hashType.name());
-        } catch (NoSuchAlgorithmException ex) {
-            throw new RuntimeException(ex);
+            is = new FileInputStream(file);
+            MessageDigest digest;
+            try {
+                digest = MessageDigest.getInstance(hashType.name());
+            } catch (NoSuchAlgorithmException ex) {
+                throw new RuntimeException(ex);
+            }
+            byte[] buf = new byte[8192];
+            int count;
+            while ((count = is.read(buf)) > 0) {
+                digest.update(buf, 0, count);
+            }
+            return digest.digest();
+        } finally {
+            if (is != null) {
+                is.close();
+            }
         }
-        byte[] buf = new byte[8192];
-        int count;
-        while ((count = is.read(buf)) > 0) {
-            digest.update(buf, 0, count);
-        }
-        return digest.digest();
     }
 
     public static String makeHash(File file, HashType hashType)
