@@ -7,15 +7,12 @@
 package com.yandex.disk.client;
 
 import java.io.File;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TimeZone;
 
-import android.os.Parcel;
-import android.os.Parcelable;
-import android.text.format.Time;
-import android.util.Log;
-
-public class ListItem implements Parcelable {
+public class ListItem {
 
     private static final String TAG = "ListItem";
 
@@ -153,10 +150,12 @@ public class ListItem implements Parcelable {
             if (datetime != null && datetime.length() > 0) {
                 String[] s = datetime.split("(\\s+|\\-|\\:)+");  // Tue, 14 Feb 2012 10:33:07 GMT
                 if (s.length >= 7) {
-                    Time time = new Time(s[7]);
-                    time.set(Integer.valueOf(s[6]), Integer.valueOf(s[5]), Integer.valueOf(s[4]),
-                             Integer.valueOf(s[1]), MONTH.get(s[2]), Integer.valueOf(s[3]));
-                    return time.toMillis(true);
+                    TimeZone tz = TimeZone.getTimeZone(s[7]);
+                    Calendar calendar = Calendar.getInstance(tz);
+                    //noinspection MagicConstant
+                    calendar.set(Integer.valueOf(s[3]), MONTH.get(s[2]), Integer.valueOf(s[1]),
+                                 Integer.valueOf(s[4]), Integer.valueOf(s[5]), Integer.valueOf(s[6]));
+                    return calendar.getTimeInMillis();
                 }
             }
         } catch (Throwable ex) {
@@ -183,42 +182,6 @@ public class ListItem implements Parcelable {
                 ", publicUrl="+publicUrl+
                 " }";
     }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(Parcel parcel, int i) {
-        parcel.writeString(fullPath);
-        parcel.writeString(displayName);
-        parcel.writeLong(contentLength);
-        parcel.writeLong(lastUpdated);
-        parcel.writeByte((byte) (isCollection ? 1 : 0));
-        parcel.writeString(etag);
-        parcel.writeByte((byte) (aliasEnabled ? 1 : 0));
-        parcel.writeString(contentType);
-        parcel.writeByte((byte) (shared ? 1 : 0));
-        parcel.writeByte((byte) (readOnly ? 1 : 0));
-        parcel.writeString(ownerName);
-        parcel.writeString(publicUrl);
-        parcel.writeLong(etime);
-    }
-
-    public static final Parcelable.Creator<ListItem> CREATOR = new Parcelable.Creator<ListItem>() {
-
-        public ListItem createFromParcel(Parcel parcel) {
-            return new ListItem(parcel.readString(), parcel.readString(), parcel.readLong(),
-                                parcel.readLong(), parcel.readByte() > 0, parcel.readString(), parcel.readByte() > 0,
-                                parcel.readString(), parcel.readByte() > 0, parcel.readByte() > 0,
-                                parcel.readString(), parcel.readString(), parcel.readLong());
-        }
-
-        public ListItem[] newArray(int size) {
-            return new ListItem[size];
-        }
-    };
 
     public String getFullPath() {
         return fullPath;

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.KeyManagementException;
+import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
@@ -21,7 +22,7 @@ public class SSLSocketFactoryWithTimeout extends SSLSocketFactory {
 
     public SSLSocketFactoryWithTimeout(int timeout)
             throws NoSuchAlgorithmException, KeyManagementException, KeyStoreException, UnrecoverableKeyException {
-        super(null);
+        super((KeyStore)null);
         this.timeout = timeout;
     }
 

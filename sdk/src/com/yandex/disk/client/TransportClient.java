@@ -6,9 +6,6 @@
 
 package com.yandex.disk.client;
 
-import android.content.Context;
-import android.text.TextUtils;
-import android.util.Log;
 import com.yandex.disk.client.exceptions.CancelledDownloadException;
 import com.yandex.disk.client.exceptions.CancelledPropfindException;
 import com.yandex.disk.client.exceptions.DuplicateFolderException;
@@ -102,35 +99,26 @@ public class TransportClient {
     protected static final int NETWORK_TIMEOUT = 30000;
     protected static final int UPLOAD_NETWORK_TIMEOUT = NETWORK_TIMEOUT * 10;
 
-    protected Context context;
     protected Credentials creds;
     protected final HttpClient httpClient;
 
-    public static TransportClient getInstance(Context context, Credentials credentials)
+    public static TransportClient getInstance(Credentials credentials)
             throws WebdavClientInitException {
-        return new TransportClient(context, credentials, NETWORK_TIMEOUT);
+        return new TransportClient(credentials, NETWORK_TIMEOUT);
     }
 
-    public static TransportClient getUploadInstance(Context context, Credentials credentials)
+    public static TransportClient getUploadInstance(Credentials credentials)
             throws WebdavClientInitException {
-        return new TransportClient(context, credentials, UPLOAD_NETWORK_TIMEOUT);
+        return new TransportClient(credentials, UPLOAD_NETWORK_TIMEOUT);
     }
 
-    public TransportClient(Context context, Credentials credentials, HttpClient httpClient)
+    protected TransportClient(Credentials credentials, int timeout)
             throws WebdavClientInitException {
-        this.context = context;
-        this.creds = credentials;
-        this.httpClient = httpClient;
+        this(credentials, userAgent, timeout);
     }
 
-    protected TransportClient(Context context, Credentials credentials, int timeout)
+    protected TransportClient(Credentials credentials, String userAgent, int timeout)
             throws WebdavClientInitException {
-        this(context, credentials, userAgent, timeout);
-    }
-
-    protected TransportClient(Context context, Credentials credentials, String userAgent, int timeout)
-            throws WebdavClientInitException {
-        this.context = context;
         this.creds = credentials;
 
         DefaultHttpClient httpClient = getNewHttpClient(userAgent, timeout);
@@ -534,7 +522,7 @@ public class TransportClient {
             throws IntermediateFolderNotExistException, IOException, WebdavUserNotInitialized, PreconditionFailedException,
             WebdavNotAuthorizedException, ServerWebdavException, UnknownServerWebdavException {
 
-        String destName = TextUtils.isEmpty(destFileName) ? file.getName() : destFileName;
+        String destName = isEmpty(destFileName) ? file.getName() : destFileName;
         String url = getUrl()+encodeURL(dir+"/"+destName);
         Log.d(TAG, "uploadFile: put to "+getUrl()+dir+"/"+destName);
 
@@ -895,5 +883,9 @@ public class TransportClient {
         public String getMethod() {
             return "MOVE";
         }
+    }
+
+    private static boolean isEmpty(String str) {
+        return (str == null || str.length() == 0 ? true : false);
     }
 }
