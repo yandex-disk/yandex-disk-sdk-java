@@ -3,7 +3,8 @@ mobile-disk-sdk-android
 
 SDK for Disk on Android
 
-https://github.yandex-team.ru/mobdisk/mobile-disk-sdk-android is a primary repository
+https://github.com/yandex-disk/yandex-disk-sdk-java
+use master branch for Android version
+use j2se branch for J2SE version
 
-https://stash.desktop.dev.yandex.net/projects/CLOUD/repos/disk-sdk-java/browse is a mirror to distibute
 
