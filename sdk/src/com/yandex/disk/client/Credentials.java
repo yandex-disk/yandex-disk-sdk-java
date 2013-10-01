@@ -34,6 +34,7 @@ public class Credentials {
     }
 
     public void addAuthHeader(AbstractHttpMessage req) {
+        req.addHeader("X-Yandex-SDK-Version", "android, 1.0");
         req.addHeader("Authorization", "OAuth "+token);
     }
 }
