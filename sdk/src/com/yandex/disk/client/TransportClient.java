@@ -67,9 +67,11 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -589,14 +591,48 @@ public class TransportClient {
         downloadFile(path, saveTo, 0, 0, progressListener);
     }
 
-    public void downloadFile(String path, File saveTo, long length, long fileSize, ProgressListener progressListener)
+    public void downloadFile(final String path, final File saveTo, final long length, final long fileSize, final ProgressListener progressListener)
+            throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
+            CancelledDownloadException, UnknownServerWebdavException {
+        download(path, new DownloadListener() {
+            @Override
+            public long getLocalLength() {
+                return length;
+            }
+
+            @Override
+            public long getServerLength() {
+                return fileSize;
+            }
+
+            @Override
+            public OutputStream getOutputStream(boolean append)
+                    throws FileNotFoundException {
+                return new FileOutputStream(saveTo, append);
+            }
+
+            @Override
+            public void updateProgress(long loaded, long total) {
+                progressListener.updateProgress(loaded, total);
+            }
+
+            @Override
+            public boolean hasCancelled() {
+                return progressListener.hasCancelled();
+            }
+        });
+    }
+
+    public void download(String path, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
             CancelledDownloadException, UnknownServerWebdavException {
         String url = getUrl()+encodeURL(path);
         HttpGet get = new HttpGet(url);
-        logMethod(get, " to "+saveTo);
+        logMethod(get);
         creds.addAuthHeader(get);
 
+        long length = downloadListener.getLocalLength();
+        long fileSize = downloadListener.getServerLength();
         if (length > 0) {
             StringBuffer contentRange = new StringBuffer();
             contentRange.append("bytes=").append(length).append("-");
@@ -655,18 +691,18 @@ public class TransportClient {
 
         int count;
         InputStream content = response.getContent();
-        FileOutputStream fos = new FileOutputStream(saveTo, partialContent);
+        OutputStream fos = downloadListener.getOutputStream(partialContent);
         try {
             final byte[] downloadBuffer = new byte[1024];
             while ((count = content.read(downloadBuffer)) != -1) {
-                if (progressListener.hasCancelled()) {
+                if (downloadListener.hasCancelled()) {
                     Log.i(TAG, "Downloading "+path+" canceled");
                     get.abort();
                     throw new CancelledDownloadException();
                 }
                 fos.write(downloadBuffer, 0, count);
                 loaded += count;
-                progressListener.updateProgress(loaded, contentLength);
+                downloadListener.updateProgress(loaded, contentLength);
             }
         } catch (CancelledDownloadException ex) {
             throw ex;
