@@ -9,14 +9,43 @@ package com.yandex.disk.client;
 import java.io.IOException;
 import java.io.OutputStream;
 
-public interface DownloadListener extends ProgressListener {
+public abstract class DownloadListener implements ProgressListener {
 
-    /** 0 if local file not exist */
-    long getLocalLength();
+    /**
+     * Local file length for resuming download. 0 if local file not exist
+     */
+    public long getLocalLength() {
+        return 0;
+    }
 
-    /** 0 if not known */
-    long getServerLength();
+    /**
+     * Length on the server. 0 if not known
+     */
+    public long getServerLength() {
+        return 0;
+    }
 
-    OutputStream getOutputStream(boolean append)
+    /**
+     * Start position for partial content (http code 206)
+     */
+    public void setStartPosition(long position) {
+    }
+
+    /**
+     * Content length for partial content (http code 206)
+     */
+    public void setContentLenght(long lenght) {
+    }
+
+    public abstract OutputStream getOutputStream(boolean append)
             throws IOException;
+
+    @Override
+    public void updateProgress(long loaded, long total) {
+    }
+
+    @Override
+    public boolean hasCancelled() {
+        return false;
+    }
 }

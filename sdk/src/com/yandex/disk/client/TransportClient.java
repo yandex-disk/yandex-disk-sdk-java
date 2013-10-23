@@ -65,6 +65,7 @@ import org.apache.http.protocol.HTTP;
 import org.apache.http.protocol.HttpContext;
 import org.xmlpull.v1.XmlPullParserException;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -623,6 +624,20 @@ public class TransportClient {
         });
     }
 
+    public byte[] download(final String path)
+            throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
+            CancelledDownloadException, UnknownServerWebdavException {
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        download(path, new DownloadListener() {
+            @Override
+            public OutputStream getOutputStream(boolean append)
+                    throws IOException {
+                return outputStream;
+            }
+        });
+        return outputStream.toByteArray();
+    }
+
     public void download(String path, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
             CancelledDownloadException, UnknownServerWebdavException {
@@ -669,15 +684,17 @@ public class TransportClient {
 
         HttpEntity response = httpResponse.getEntity();
         long contentLength = response.getContentLength();
-        Log.d(TAG, "downloadFile: contentLength="+contentLength);
+        Log.d(TAG, "download: contentLength="+contentLength);
 
         long loaded;
         if (partialContent) {
             ContentRangeResponse contentRangeResponse = parseContentRangeHeader(httpResponse.getLastHeader("Content-Range"));
-            Log.d(TAG, "downloadFile: contentRangeResponse="+contentRangeResponse);
+            Log.d(TAG, "download: contentRangeResponse="+contentRangeResponse);
             if (contentRangeResponse != null) {
                 loaded = contentRangeResponse.getStart();
                 contentLength = contentRangeResponse.getSize();
+                downloadListener.setStartPosition(loaded);
+                downloadListener.setContentLenght(contentLength);
             } else {
                 loaded = length;
                 contentLength = fileSize;
