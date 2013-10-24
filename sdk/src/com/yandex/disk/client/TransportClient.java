@@ -771,6 +771,57 @@ public class TransportClient {
     }
 
     /**
+     * http://api.yandex.ru/disk/doc/dg/reference/preview.xml
+     */
+    public enum PreviewSize {
+        XXXS, XXS, XS, S, M, L, XL, XXL, XXXL
+    }
+
+    private static final String PREVIEW_ARG = "preview";
+    private static final String SIZE_ARG = "size";
+
+    private static void checkPath(String path)
+            throws IllegalArgumentException {
+        if (path == null || path.contains("?")) {
+            throw new IllegalArgumentException();
+        }
+    }
+
+    public static String makePreviewPath(String path, PreviewSize size)
+            throws IllegalArgumentException {
+        checkPath(path);
+        if (size == null) {
+            throw new IllegalArgumentException();
+        }
+        return path+"?"+PREVIEW_ARG+"&"+SIZE_ARG+"="+size.name();
+    }
+
+    public static String makePreviewPath(String path, int size)
+            throws IllegalArgumentException {
+        checkPath(path);
+        if (size <= 0) {
+            throw new IllegalArgumentException();
+        }
+        return path+"?"+PREVIEW_ARG+"&"+SIZE_ARG+"="+size;
+    }
+
+    public static String makePreviewPath(String path, int sizeX, int sizeY) {
+        checkPath(path);
+        if (sizeX <= 0 && sizeY <= 0) {
+            throw new IllegalArgumentException();
+        }
+        StringBuilder size = new StringBuilder();
+        if (sizeX > 0) {
+            size.append(sizeX);
+        }
+        size.append("x");
+        if (sizeY > 0) {
+            size.append(sizeY);
+        }
+        return path+"?"+PREVIEW_ARG+"&"+SIZE_ARG+"="+size;
+    }
+
+    /**
      * Make folder
      *
      * @param dir Path to create
