@@ -6,7 +6,7 @@
 
 package com.yandex.disk.client.exceptions;
 
-public class WebdavException extends Exception {
+public abstract class WebdavException extends Exception {
 
     public WebdavException() {
         super();

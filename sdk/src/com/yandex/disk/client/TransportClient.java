@@ -370,12 +370,16 @@ public class TransportClient {
      * @see #getList(String, int, String, String, ListParsingHandler)
      */
     public void getList(String path, ListParsingHandler handler)
-            throws WebdavException, IOException {
+            throws IOException, PreconditionFailedException, UnknownServerWebdavException, WebdavFileNotFoundException,
+            CancelledPropfindException, WebdavUserNotInitialized, ServerWebdavException, WebdavNotAuthorizedException,
+            WebdavForbiddenException, WebdavInvalidUserException {
         getList(path, MAX_ITEMS_PER_PAGE, null, null, handler);
     }
 
     public void getList(String path, int itemsPerPage, ListParsingHandler handler)
-            throws WebdavException, IOException {
+            throws IOException, PreconditionFailedException, UnknownServerWebdavException, WebdavFileNotFoundException,
+            CancelledPropfindException, WebdavUserNotInitialized, ServerWebdavException, WebdavNotAuthorizedException,
+            WebdavForbiddenException, WebdavInvalidUserException {
         getList(path, itemsPerPage, null, null, handler);
     }
 
@@ -390,7 +394,9 @@ public class TransportClient {
      * @throws IOException                I/O exceptions
      */
     public void getList(String path, int itemsPerPage, String sortBy, String orderBy, ListParsingHandler handler)
-            throws WebdavException, IOException {
+            throws IOException, CancelledPropfindException, WebdavNotAuthorizedException, WebdavInvalidUserException,
+            WebdavForbiddenException, WebdavFileNotFoundException, WebdavUserNotInitialized, UnknownServerWebdavException,
+            PreconditionFailedException, ServerWebdavException {
         Log.d(TAG, "getList for "+path);
 
         boolean itemsFinished = false;
@@ -447,7 +453,7 @@ public class TransportClient {
                 countOnPage = parser.getParsedCount();
                 Log.d(TAG, "countOnPage="+countOnPage);
             } catch (XmlPullParserException ex) {
-                throw new WebdavException(ex);
+                throw new UnknownServerWebdavException(ex);
             } finally {
                 consumeContent(response);
             }
