@@ -13,6 +13,7 @@ import com.yandex.disk.client.exceptions.CancelledDownloadException;
 import com.yandex.disk.client.exceptions.CancelledPropfindException;
 import com.yandex.disk.client.exceptions.DuplicateFolderException;
 import com.yandex.disk.client.exceptions.FileDownloadException;
+import com.yandex.disk.client.exceptions.FileNotModifiedException;
 import com.yandex.disk.client.exceptions.FileTooBigServerException;
 import com.yandex.disk.client.exceptions.FilesLimitExceededServerException;
 import com.yandex.disk.client.exceptions.IntermediateFolderNotExistException;
@@ -594,13 +595,13 @@ public class TransportClient {
 
     public void downloadFile(String path, File saveTo, ProgressListener progressListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException {
         downloadFile(path, saveTo, 0, 0, progressListener);
     }
 
     public void downloadFile(final String path, final File saveTo, final long length, final long fileSize, final ProgressListener progressListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException {
         download(path, new DownloadListener() {
             @Override
             public long getLocalLength() {
@@ -632,7 +633,7 @@ public class TransportClient {
 
     public byte[] download(final String path)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         download(path, new DownloadListener() {
             @Override
@@ -646,7 +647,7 @@ public class TransportClient {
 
     public void download(String path, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException {
         String url = getUrl()+encodeURL(path);
         HttpGet get = new HttpGet(url);
         logMethod(get);
@@ -654,7 +655,9 @@ public class TransportClient {
 
         long length = downloadListener.getLocalLength();
         long fileSize = downloadListener.getServerLength();
+        String ifTag = "If-None-Match";
         if (length > 0) {
+            ifTag = "If-Range";
             StringBuffer contentRange = new StringBuffer();
             contentRange.append("bytes=").append(length).append("-");
             if (fileSize > 0) {
@@ -662,6 +665,12 @@ public class TransportClient {
             }
             Log.d(TAG, "Range: "+contentRange);
             get.addHeader("Range", contentRange.toString());
+        }
+
+        String etag = downloadListener.getETag();
+        if (etag != null) {
+            Log.d(TAG, ifTag+": "+etag);
+            get.addHeader(ifTag, etag);
         }
 
         boolean partialContent = false;
@@ -676,6 +685,9 @@ public class TransportClient {
                 case 206:
                     partialContent = true;
                     break;
+                case 304:
+                    consumeContent(httpResponse);
+                    throw new FileNotModifiedException();
                 case 404:
                     consumeContent(httpResponse);
                     throw new FileDownloadException("error while downloading file "+url);

@@ -6,11 +6,8 @@
 
 package com.yandex.disk.client.exceptions;
 
-import java.io.IOException;
-
-public class FileDownloadException extends IOException {
-
-    public FileDownloadException(String msg) {
-        super(msg);
-    }
+/**
+ * 304 on GET with If-None-Match
+ */
+public class FileNotModifiedException extends WebdavException {
 }
