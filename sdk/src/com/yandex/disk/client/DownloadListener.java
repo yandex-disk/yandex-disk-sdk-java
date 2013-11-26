@@ -6,6 +6,8 @@
 
 package com.yandex.disk.client;
 
+import com.yandex.disk.client.exceptions.DownloadNoSpaceAvailableException;
+
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -34,15 +36,17 @@ public abstract class DownloadListener implements ProgressListener {
     }
 
     /**
-     * Start position for partial content (http code 206)
+     * Start position after server response
      */
     public void setStartPosition(long position) {
     }
 
     /**
-     * Content length for partial content (http code 206)
+     * Content length after server response. 0 if not known
+     * @throws DownloadNoSpaceAvailableException if no local space for content
      */
-    public void setContentLenght(long lenght) {
+    public void setContentLength(long lenght)
+        throws DownloadNoSpaceAvailableException {
     }
 
     public abstract OutputStream getOutputStream(boolean append)
