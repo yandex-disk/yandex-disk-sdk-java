@@ -21,6 +21,7 @@ import com.yandex.disk.client.exceptions.IntermediateFolderNotExistException;
 import com.yandex.disk.client.exceptions.PreconditionFailedException;
 import com.yandex.disk.client.exceptions.RangeNotSatisfiableException;
 import com.yandex.disk.client.exceptions.ServerWebdavException;
+import com.yandex.disk.client.exceptions.ServiceUnavailableWebdavException;
 import com.yandex.disk.client.exceptions.UnknownServerWebdavException;
 import com.yandex.disk.client.exceptions.UnsupportedMediaTypeException;
 import com.yandex.disk.client.exceptions.WebdavClientInitException;
@@ -326,6 +327,9 @@ public class TransportClient {
             case 413:
                 Log.d(TAG, "Http code 413 (File too big): "+details);
                 throw new FileTooBigServerException();
+            case 503:
+                Log.d(TAG, "Http code 503 (Service Unavailable): "+details);
+                throw new ServiceUnavailableWebdavException();
             case 507:
                 Log.d(TAG, "Http code 507 (Insufficient Storage): "+details);
                 throw new FilesLimitExceededServerException();
