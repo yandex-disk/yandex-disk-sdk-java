@@ -6,7 +6,14 @@
 
 package com.yandex.disk.client;
 
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.AbstractHttpEntity;
+
 public abstract class ListParsingHandler {
+
+    public void onCreateRequest(HttpPost post, AbstractHttpEntity entity) {
+        post.setEntity(entity);
+    }
 
     public void onPageFinished(int itemsOnPage) {
     }

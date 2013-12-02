@@ -425,7 +425,7 @@ public class TransportClient {
             logMethod(propFind);
             creds.addAuthHeader(propFind);
             propFind.setHeader(WEBDAV_PROTO_DEPTH, "1");
-            propFind.setEntity(new StringEntity(PROPFIND_REQUEST));
+            handler.onCreateRequest(propFind, new StringEntity(PROPFIND_REQUEST));
 
             HttpResponse response = executeRequest(propFind);
             StatusLine statusLine = response.getStatusLine();
