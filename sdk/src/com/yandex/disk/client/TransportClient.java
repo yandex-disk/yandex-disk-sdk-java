@@ -425,9 +425,9 @@ public class TransportClient {
             logMethod(propFind);
             creds.addAuthHeader(propFind);
             propFind.setHeader(WEBDAV_PROTO_DEPTH, "1");
-            handler.onCreateRequest(propFind, new StringEntity(PROPFIND_REQUEST));
+            HttpContext httpContext = handler.onCreateRequest(propFind, new StringEntity(PROPFIND_REQUEST));
 
-            HttpResponse response = executeRequest(propFind);
+            HttpResponse response = executeRequest(propFind, httpContext);
             StatusLine statusLine = response.getStatusLine();
             if (statusLine != null) {
                 int code = statusLine.getStatusCode();
@@ -500,11 +500,9 @@ public class TransportClient {
         if (statusLine != null) {
             int statusCode = statusLine.getStatusCode();
             if (statusLine.getStatusCode() == 200) {
-//                Log.d(TAG, "200 "+statusLine.getReasonPhrase()+" for file "+file.getAbsolutePath()+" in dir "+dir);
                 Header[] headers = response.getHeaders("Content-Length");
                 if (headers.length > 0) {
                     String contentLength = headers[0].getValue();
-//                    Log.d(TAG, "Content-Length: "+contentLength);
                     return Long.valueOf(contentLength);
                 } else {
                     return 0;
@@ -653,7 +651,18 @@ public class TransportClient {
     public void download(String path, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
             CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
-        String url = getUrl()+encodeURL(path);
+        downloadUrl(getUrl()+encodeURL(path), downloadListener);
+    }
+
+    public void downloadPreview(String path, DownloadListener downloadListener)
+            throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+        downloadUrl(getUrl()+path, downloadListener);
+    }
+
+    private void downloadUrl(String url, DownloadListener downloadListener)
+            throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
         HttpGet get = new HttpGet(url);
         logMethod(get);
         creds.addAuthHeader(get);
@@ -736,7 +745,7 @@ public class TransportClient {
             final byte[] downloadBuffer = new byte[1024];
             while ((count = content.read(downloadBuffer)) != -1) {
                 if (downloadListener.hasCancelled()) {
-                    Log.i(TAG, "Downloading "+path+" canceled");
+                    Log.i(TAG, "Downloading "+url+" canceled");
                     get.abort();
                     throw new CancelledDownloadException();
                 }
