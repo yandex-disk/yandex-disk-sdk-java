@@ -7,13 +7,13 @@ version = '1.0-SNAPSHOT'
 
 buildscript {
     repositories {
-        if (!project.properties.containsKey('teamcity')) ivy{name "local"; url 'file/' + new File(System.getProperty('user.home'), '.yandex-mobdev/ivy-repo').absolutePath}
+        if (!project.properties.containsKey('teamcity')) ivy{name "local"; url 'file://' + new File(System.getProperty('user.home'), '.yandex-mobdev/ivy-repo').absolutePath}
         mavenCentral()
         maven {url 'http://maven1iva.yandex.net/nexus/content/repositories/yandex_mobile/'}
         maven {url 'http://maven1eto.yandex.net/nexus/content/repositories/yandex_mobile/'}
     }
     dependencies {
-        classpath ("ru.yandex.android.tools:gradle-android-plugin:1.07-SNAPSHOT") {changing = true}
+        classpath ("ru.yandex.android.tools:gradle-android-plugin:1.08-SNAPSHOT") {changing = true}
         classpath ("ru.yandex.android.tools:gradle-upload-beta-plugin:1.00-SNAPSHOT") {changing = true}
         classpath "org.apache.httpcomponents:httpclient:4.1.3"
         classpath "org.apache.httpcomponents:httpmime:4.1.3"
@@ -29,7 +29,7 @@ apply plugin: 'upload-beta'
 
 
 repositories {
-    if (!project.properties.containsKey('teamcity')) ivy{name "local"; url 'file/' + new File(System.getProperty('user.home'), '.yandex-mobdev/ivy-repo').absolutePath}
+    if (!project.properties.containsKey('teamcity')) ivy{name "local"; url 'file://' + new File(System.getProperty('user.home'), '.yandex-mobdev/ivy-repo').absolutePath}
     mavenCentral()
     maven {url 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile/'}
 }
