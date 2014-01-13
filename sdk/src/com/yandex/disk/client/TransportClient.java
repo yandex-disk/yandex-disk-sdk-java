@@ -360,6 +360,7 @@ public class TransportClient {
                     "<m:readonly/>"+
                     "<m:public_url/>"+
                     "<m:etime/>"+
+                    "<m:mediatype/>"+
                     "</d:prop>"+
                     "</d:propfind>";
 
@@ -639,6 +640,20 @@ public class TransportClient {
             CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         download(path, new DownloadListener() {
+            @Override
+            public OutputStream getOutputStream(boolean append)
+                    throws IOException {
+                return outputStream;
+            }
+        });
+        return outputStream.toByteArray();
+    }
+
+    public byte[] downloadUrl(final String url)
+            throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        downloadUrl(url, new DownloadListener() {
             @Override
             public OutputStream getOutputStream(boolean append)
                     throws IOException {
