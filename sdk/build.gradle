@@ -3,7 +3,7 @@ apply plugin: 'maven'
 
 group = 'ru.yandex.android'
 
-version = '1.02'
+version = '1.0-SNAPSHOT'
 
 buildscript {
     repositories {
