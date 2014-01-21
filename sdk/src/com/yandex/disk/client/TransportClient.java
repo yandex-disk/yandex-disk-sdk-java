@@ -11,14 +11,17 @@ import android.text.TextUtils;
 import android.util.Log;
 import com.yandex.disk.client.exceptions.CancelledDownloadException;
 import com.yandex.disk.client.exceptions.CancelledPropfindException;
+import com.yandex.disk.client.exceptions.DownloadNoSpaceAvailableException;
 import com.yandex.disk.client.exceptions.DuplicateFolderException;
 import com.yandex.disk.client.exceptions.FileDownloadException;
+import com.yandex.disk.client.exceptions.FileNotModifiedException;
 import com.yandex.disk.client.exceptions.FileTooBigServerException;
 import com.yandex.disk.client.exceptions.FilesLimitExceededServerException;
 import com.yandex.disk.client.exceptions.IntermediateFolderNotExistException;
 import com.yandex.disk.client.exceptions.PreconditionFailedException;
 import com.yandex.disk.client.exceptions.RangeNotSatisfiableException;
 import com.yandex.disk.client.exceptions.ServerWebdavException;
+import com.yandex.disk.client.exceptions.ServiceUnavailableWebdavException;
 import com.yandex.disk.client.exceptions.UnknownServerWebdavException;
 import com.yandex.disk.client.exceptions.UnsupportedMediaTypeException;
 import com.yandex.disk.client.exceptions.WebdavClientInitException;
@@ -324,6 +327,9 @@ public class TransportClient {
             case 413:
                 Log.d(TAG, "Http code 413 (File too big): "+details);
                 throw new FileTooBigServerException();
+            case 503:
+                Log.d(TAG, "Http code 503 (Service Unavailable): "+details);
+                throw new ServiceUnavailableWebdavException();
             case 507:
                 Log.d(TAG, "Http code 507 (Insufficient Storage): "+details);
                 throw new FilesLimitExceededServerException();
@@ -354,6 +360,7 @@ public class TransportClient {
                     "<m:readonly/>"+
                     "<m:public_url/>"+
                     "<m:etime/>"+
+                    "<m:mediatype/>"+
                     "</d:prop>"+
                     "</d:propfind>";
 
@@ -370,12 +377,16 @@ public class TransportClient {
      * @see #getList(String, int, String, String, ListParsingHandler)
      */
     public void getList(String path, ListParsingHandler handler)
-            throws WebdavException, IOException {
+            throws IOException, PreconditionFailedException, UnknownServerWebdavException, WebdavFileNotFoundException,
+            CancelledPropfindException, WebdavUserNotInitialized, ServerWebdavException, WebdavNotAuthorizedException,
+            WebdavForbiddenException, WebdavInvalidUserException {
         getList(path, MAX_ITEMS_PER_PAGE, null, null, handler);
     }
 
     public void getList(String path, int itemsPerPage, ListParsingHandler handler)
-            throws WebdavException, IOException {
+            throws IOException, PreconditionFailedException, UnknownServerWebdavException, WebdavFileNotFoundException,
+            CancelledPropfindException, WebdavUserNotInitialized, ServerWebdavException, WebdavNotAuthorizedException,
+            WebdavForbiddenException, WebdavInvalidUserException {
         getList(path, itemsPerPage, null, null, handler);
     }
 
@@ -390,7 +401,9 @@ public class TransportClient {
      * @throws IOException                I/O exceptions
      */
     public void getList(String path, int itemsPerPage, String sortBy, String orderBy, ListParsingHandler handler)
-            throws WebdavException, IOException {
+            throws IOException, CancelledPropfindException, WebdavNotAuthorizedException, WebdavInvalidUserException,
+            WebdavForbiddenException, WebdavFileNotFoundException, WebdavUserNotInitialized, UnknownServerWebdavException,
+            PreconditionFailedException, ServerWebdavException {
         Log.d(TAG, "getList for "+path);
 
         boolean itemsFinished = false;
@@ -413,9 +426,9 @@ public class TransportClient {
             logMethod(propFind);
             creds.addAuthHeader(propFind);
             propFind.setHeader(WEBDAV_PROTO_DEPTH, "1");
-            propFind.setEntity(new StringEntity(PROPFIND_REQUEST));
+            HttpContext httpContext = handler.onCreateRequest(propFind, new StringEntity(PROPFIND_REQUEST));
 
-            HttpResponse response = executeRequest(propFind);
+            HttpResponse response = executeRequest(propFind, httpContext);
             StatusLine statusLine = response.getStatusLine();
             if (statusLine != null) {
                 int code = statusLine.getStatusCode();
@@ -447,7 +460,7 @@ public class TransportClient {
                 countOnPage = parser.getParsedCount();
                 Log.d(TAG, "countOnPage="+countOnPage);
             } catch (XmlPullParserException ex) {
-                throw new WebdavException(ex);
+                throw new UnknownServerWebdavException(ex);
             } finally {
                 consumeContent(response);
             }
@@ -488,11 +501,9 @@ public class TransportClient {
         if (statusLine != null) {
             int statusCode = statusLine.getStatusCode();
             if (statusLine.getStatusCode() == 200) {
-//                Log.d(TAG, "200 "+statusLine.getReasonPhrase()+" for file "+file.getAbsolutePath()+" in dir "+dir);
                 Header[] headers = response.getHeaders("Content-Length");
                 if (headers.length > 0) {
                     String contentLength = headers[0].getValue();
-//                    Log.d(TAG, "Content-Length: "+contentLength);
                     return Long.valueOf(contentLength);
                 } else {
                     return 0;
@@ -588,13 +599,13 @@ public class TransportClient {
 
     public void downloadFile(String path, File saveTo, ProgressListener progressListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
         downloadFile(path, saveTo, 0, 0, progressListener);
     }
 
     public void downloadFile(final String path, final File saveTo, final long length, final long fileSize, final ProgressListener progressListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
         download(path, new DownloadListener() {
             @Override
             public long getLocalLength() {
@@ -626,7 +637,7 @@ public class TransportClient {
 
     public byte[] download(final String path)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         download(path, new DownloadListener() {
             @Override
@@ -638,17 +649,44 @@ public class TransportClient {
         return outputStream.toByteArray();
     }
 
+    public byte[] downloadUrl(final String url)
+            throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        downloadUrl(url, new DownloadListener() {
+            @Override
+            public OutputStream getOutputStream(boolean append)
+                    throws IOException {
+                return outputStream;
+            }
+        });
+        return outputStream.toByteArray();
+    }
+
     public void download(String path, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException {
-        String url = getUrl()+encodeURL(path);
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+        downloadUrl(getUrl()+encodeURL(path), downloadListener);
+    }
+
+    public void downloadPreview(String path, DownloadListener downloadListener)
+            throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+        downloadUrl(getUrl()+path, downloadListener);
+    }
+
+    private void downloadUrl(String url, DownloadListener downloadListener)
+            throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
         HttpGet get = new HttpGet(url);
         logMethod(get);
         creds.addAuthHeader(get);
 
         long length = downloadListener.getLocalLength();
         long fileSize = downloadListener.getServerLength();
+        String ifTag = "If-None-Match";
         if (length > 0) {
+            ifTag = "If-Range";
             StringBuffer contentRange = new StringBuffer();
             contentRange.append("bytes=").append(length).append("-");
             if (fileSize > 0) {
@@ -656,6 +694,12 @@ public class TransportClient {
             }
             Log.d(TAG, "Range: "+contentRange);
             get.addHeader("Range", contentRange.toString());
+        }
+
+        String etag = downloadListener.getETag();
+        if (etag != null) {
+            Log.d(TAG, ifTag+": "+etag);
+            get.addHeader(ifTag, etag);
         }
 
         boolean partialContent = false;
@@ -670,6 +714,9 @@ public class TransportClient {
                 case 206:
                     partialContent = true;
                     break;
+                case 304:
+                    consumeContent(httpResponse);
+                    throw new FileNotModifiedException();
                 case 404:
                     consumeContent(httpResponse);
                     throw new FileDownloadException("error while downloading file "+url);
@@ -693,8 +740,6 @@ public class TransportClient {
             if (contentRangeResponse != null) {
                 loaded = contentRangeResponse.getStart();
                 contentLength = contentRangeResponse.getSize();
-                downloadListener.setStartPosition(loaded);
-                downloadListener.setContentLenght(contentLength);
             } else {
                 loaded = length;
                 contentLength = fileSize;
@@ -705,6 +750,8 @@ public class TransportClient {
                 contentLength = 0;
             }
         }
+        downloadListener.setStartPosition(loaded);
+        downloadListener.setContentLength(contentLength);
 
         int count;
         InputStream content = response.getContent();
@@ -713,7 +760,7 @@ public class TransportClient {
             final byte[] downloadBuffer = new byte[1024];
             while ((count = content.read(downloadBuffer)) != -1) {
                 if (downloadListener.hasCancelled()) {
-                    Log.i(TAG, "Downloading "+path+" canceled");
+                    Log.i(TAG, "Downloading "+url+" canceled");
                     get.abort();
                     throw new CancelledDownloadException();
                 }

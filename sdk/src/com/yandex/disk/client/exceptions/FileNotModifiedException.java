@@ -6,12 +6,8 @@
 
 package com.yandex.disk.client.exceptions;
 
-public class UnknownServerWebdavException extends WebdavException {
-    public UnknownServerWebdavException(Exception ex) {
-        super(ex);
-    }
-
-    public UnknownServerWebdavException(String message) {
-        super(message);
-    }
+/**
+ * 304 on GET with If-None-Match
+ */
+public class FileNotModifiedException extends WebdavException {
 }

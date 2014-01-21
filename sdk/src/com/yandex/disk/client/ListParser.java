@@ -84,6 +84,8 @@ public class ListParser extends Parser {
                 builder.setPublicUrl(text);
             } else if ("/multistatus/response/propstat/prop/etime".equals(path)) {
                 builder.setEtime(parseLong(text));
+            } else if ("/multistatus/response/propstat/prop/mediatype".equals(path)) {
+                builder.setMediaType(text);
             }
         }
     }

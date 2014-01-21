@@ -6,14 +6,15 @@
 
 package com.yandex.disk.client;
 
-import com.yandex.disk.client.exceptions.CancelledUploadingException;
-import org.apache.http.entity.AbstractHttpEntity;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+
+import org.apache.http.entity.AbstractHttpEntity;
+
+import com.yandex.disk.client.exceptions.CancelledUploadingException;
 
 public class FileProgressHttpEntity extends AbstractHttpEntity {
 
@@ -82,5 +83,9 @@ public class FileProgressHttpEntity extends AbstractHttpEntity {
             }
             progressListener.updateProgress(loaded+start, getContentLength()+start);
         }
+    }
+
+    public File getFile() {
+        return file;
     }
 }
