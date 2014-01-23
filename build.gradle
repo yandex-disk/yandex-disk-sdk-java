@@ -1,0 +1,50 @@
+apply plugin: 'android-library'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:0.7.3'
+    }
+}
+
+dependencies {
+    compile 'com.android.support:support-v4:18.0.+'
+}
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion '19.0.0'
+
+    sourceSets {
+        main {
+            manifest.srcFile 'sdk/AndroidManifest.xml'
+            java.srcDirs = ['sdk/src']
+            res.srcDirs = ['sdk/res']
+        }
+    }
+
+}
+
+apply plugin: 'maven'
+
+group = 'ru.yandex.android'
+version = '1.0-SNAPSHOT'
+
+uploadArchives {
+    repositories {
+        if (project.properties.containsKey('teamcity')) {
+            mavenDeployer {
+                auth = { authentication(userName: teamcity['maven.username'], password: teamcity['maven.password']) }
+                repository         (url: 'http://maven1iva.yandex.net/nexus/content/repositories/yandex_mobile_releases/', auth)
+                snapshotRepository (url: 'http://maven1iva.yandex.net/nexus/content/repositories/yandex_mobile_snapshots/', auth)
+            }
+        } else {
+            mavenDeployer {
+                repository(url: System.getenv("local-maven-repo-release"))
+                snapshotRepository(url: System.getenv("local-maven-repo-snapshot"))
+            }
+        }
+    }
+}
