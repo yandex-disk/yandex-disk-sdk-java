@@ -345,23 +345,24 @@ public class TransportClient {
     }
 
     private static final String PROPFIND_REQUEST =
-            "<?xml version='1.0' encoding='utf-8' ?>"+
-                    "<d:propfind xmlns:d='DAV:'>"+
-                    "<d:prop xmlns:m='urn:yandex:disk:meta'>"+
-                    "<d:resourcetype/>"+
-                    "<d:displayname/>"+
-                    "<d:getcontentlength/>"+
-                    "<d:getlastmodified/>"+
-                    "<d:getetag/>"+
-                    "<d:getcontenttype/>"+
-                    "<m:alias_enabled/>"+
-                    "<m:visible/>"+
-                    "<m:shared/>"+
-                    "<m:readonly/>"+
-                    "<m:public_url/>"+
-                    "<m:etime/>"+
-                    "<m:mediatype/>"+
-                    "</d:prop>"+
+            "<?xml version='1.0' encoding='utf-8' ?>" +
+                    "<d:propfind xmlns:d='DAV:'>" +
+                    "<d:prop xmlns:m='urn:yandex:disk:meta'>" +
+                    "<d:resourcetype/>" +
+                    "<d:displayname/>" +
+                    "<d:getcontentlength/>" +
+                    "<d:getlastmodified/>" +
+                    "<d:getetag/>" +
+                    "<d:getcontenttype/>" +
+                    "<m:alias_enabled/>" +
+                    "<m:visible/>" +
+                    "<m:shared/>" +
+                    "<m:readonly/>" +
+                    "<m:public_url/>" +
+                    "<m:etime/>" +
+                    "<m:mediatype/>" +
+                    "<m:mpfs_file_id/>" +
+                    "</d:prop>" +
                     "</d:propfind>";
 
     private static final int MAX_ITEMS_PER_PAGE = Integer.MAX_VALUE;

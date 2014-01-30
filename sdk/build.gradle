@@ -15,7 +15,7 @@ dependencies {
 
 android {
     compileSdkVersion 19
-    buildToolsVersion '19.0.0'
+    buildToolsVersion '19.0.1'
 
     sourceSets {
         main {
@@ -43,8 +43,7 @@ uploadArchives {
             }
         } else {
             mavenDeployer {
-                repository(url: System.getenv("local-maven-repo-release"))
-                snapshotRepository(url: System.getenv("local-maven-repo-snapshot"))
+                repository(url: System.getenv("MAVEN_LOCAL_REPO"))
             }
         }
     }
