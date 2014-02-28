@@ -571,7 +571,7 @@ public class TransportClient {
         }
 
         if (uploadedSize > 0) {
-            StringBuffer contentRange = new StringBuffer();
+            StringBuilder contentRange = new StringBuilder();
             contentRange.append("bytes ").append(uploadedSize).append("-").append(file.length()-1).append("/").append(file.length());
             Log.d(TAG, "Content-Range: "+contentRange);
             put.addHeader("Content-Range", contentRange.toString());
@@ -611,11 +611,6 @@ public class TransportClient {
             @Override
             public long getLocalLength() {
                 return length;
-            }
-
-            @Override
-            public long getServerLength() {
-                return fileSize;
             }
 
             @Override
@@ -684,15 +679,11 @@ public class TransportClient {
         creds.addAuthHeader(get);
 
         long length = downloadListener.getLocalLength();
-        long fileSize = downloadListener.getServerLength();
         String ifTag = "If-None-Match";
         if (length > 0) {
             ifTag = "If-Range";
-            StringBuffer contentRange = new StringBuffer();
+            StringBuilder contentRange = new StringBuilder();
             contentRange.append("bytes=").append(length).append("-");
-            if (fileSize > 0) {
-                contentRange.append(fileSize-1);
-            }
             Log.d(TAG, "Range: "+contentRange);
             get.addHeader("Range", contentRange.toString());
         }
@@ -743,7 +734,6 @@ public class TransportClient {
                 contentLength = contentRangeResponse.getSize();
             } else {
                 loaded = length;
-                contentLength = fileSize;
             }
         } else {
             loaded = 0;
