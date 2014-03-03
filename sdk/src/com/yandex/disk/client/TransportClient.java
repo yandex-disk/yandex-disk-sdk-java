@@ -741,6 +741,13 @@ public class TransportClient {
                 contentLength = 0;
             }
         }
+
+        //FIXME This hack must be replaced after CHEMODAN-15793 {
+        HttpHead head = new HttpHead(url);
+        creds.addAuthHeader(head);
+        HttpResponse headResponse = executeRequest(head);
+        downloadListener.setEtag(headResponse.getFirstHeader("Etag").getValue());
+        //FIXME }
         downloadListener.setStartPosition(loaded);
         downloadListener.setContentLength(contentLength);
 

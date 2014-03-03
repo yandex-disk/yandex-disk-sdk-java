@@ -53,4 +53,8 @@ public abstract class DownloadListener implements ProgressListener {
     public boolean hasCancelled() {
         return false;
     }
+
+    public void setEtag(String etag) {
+
+    }
 }
