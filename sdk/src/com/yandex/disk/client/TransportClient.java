@@ -34,6 +34,7 @@ import com.yandex.disk.client.exceptions.WebdavUserNotInitialized;
 import com.yandex.disk.client.exceptions.WebdavSharingForbiddenException;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
 import org.apache.http.StatusLine;
@@ -57,6 +58,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.DefaultRedirectHandler;
+import org.apache.http.impl.client.DefaultRequestDirector;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.CoreProtocolPNames;
@@ -66,6 +68,8 @@ import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.protocol.HttpContext;
+import org.apache.http.protocol.HttpProcessor;
+import org.apache.http.protocol.HttpRequestExecutor;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.ByteArrayOutputStream;
@@ -89,6 +93,7 @@ import java.util.regex.Pattern;
 public class TransportClient {
 
     private static final String TAG = "TransportClient";
+    private static final String ATTR_LAST_ETAG_FROM_REDIRECT = "yandex.last-etag-from-redirect";
 
     protected static URL serverURL;
 
@@ -102,7 +107,7 @@ public class TransportClient {
 
     protected static final String userAgent = "Webdav Android Client Example/1.0";
     protected static final String LOCATION_HEADER = "Location";
-    protected static final String NO_REDIRECT_CONTEXT = "yandex.no-redirect";
+    public static final String NO_REDIRECT_CONTEXT = "yandex.no-redirect";
     protected static final String WEBDAV_PROTO_DEPTH = "Depth";
 
     protected static final int NETWORK_TIMEOUT = 30000;
@@ -122,11 +127,12 @@ public class TransportClient {
         return new TransportClient(context, credentials, UPLOAD_NETWORK_TIMEOUT);
     }
 
-    public TransportClient(Context context, Credentials credentials, HttpClient httpClient)
+    public TransportClient(Context context, Credentials credentials, DefaultHttpClient httpClient)
             throws WebdavClientInitException {
         this.context = context;
         this.creds = credentials;
         this.httpClient = httpClient;
+        initHttpClient(httpClient);
     }
 
     protected TransportClient(Context context, Credentials credentials, int timeout)
@@ -142,6 +148,12 @@ public class TransportClient {
         DefaultHttpClient httpClient = getNewHttpClient(userAgent, timeout);
         httpClient.setCookieStore(new BasicCookieStore());
         this.httpClient = httpClient;
+        initHttpClient(httpClient);
+    }
+
+    private void initHttpClient(DefaultHttpClient httpClient) {
+        httpClient.setHttpRequestRetryHandler(requestRetryHandler);
+        httpClient.setRedirectHandler(redirectHandler);
     }
 
     protected static DefaultHttpClient getNewHttpClient(String userAgent, int timeout)
@@ -175,8 +187,6 @@ public class TransportClient {
         }
         res.getParams().setParameter(CoreProtocolPNames.USE_EXPECT_CONTINUE, true);
         res.getParams().setParameter(CoreProtocolPNames.WAIT_FOR_CONTINUE, timeout);
-        res.setHttpRequestRetryHandler(requestRetryHandler);
-        res.setRedirectHandler(redirectHandler);
         return res;
     }
 
@@ -194,7 +204,10 @@ public class TransportClient {
             if (noRedirect != null && (Boolean) noRedirect) {
                 return false;
             }
-
+            Header etagHeader = httpResponse.getFirstHeader("Etag");
+            if (etagHeader != null) {
+                httpContext.setAttribute(ATTR_LAST_ETAG_FROM_REDIRECT, etagHeader.getValue());
+            }
             return super.isRedirectRequested(httpResponse, httpContext);
         }
     };
@@ -680,7 +693,8 @@ public class TransportClient {
 
         long length = downloadListener.getLocalLength();
         String ifTag = "If-None-Match";
-        if (length > 0) {
+        boolean isDownloadContinuation = length > 0;
+        if (isDownloadContinuation) {
             ifTag = "If-Range";
             StringBuilder contentRange = new StringBuilder();
             contentRange.append("bytes=").append(length).append("-");
@@ -695,7 +709,8 @@ public class TransportClient {
         }
 
         boolean partialContent = false;
-        HttpResponse httpResponse = executeRequest(get);
+        BasicHttpContext httpContext = new BasicHttpContext();
+        HttpResponse httpResponse = executeRequest(get, httpContext);
         StatusLine statusLine = httpResponse.getStatusLine();
         if (statusLine != null) {
             int statusCode = statusLine.getStatusCode();
@@ -742,12 +757,17 @@ public class TransportClient {
             }
         }
 
-        //FIXME This hack must be replaced after CHEMODAN-15793 {
-        HttpHead head = new HttpHead(url);
-        creds.addAuthHeader(head);
-        HttpResponse headResponse = executeRequest(head);
-        downloadListener.setEtag(headResponse.getFirstHeader("Etag").getValue());
-        //FIXME }
+        if (!isDownloadContinuation) {
+            String etagOfDownloadedContent = (String) httpContext.getAttribute(ATTR_LAST_ETAG_FROM_REDIRECT);
+            if (etagOfDownloadedContent != null) {
+                downloadListener.setEtag(etagOfDownloadedContent);
+            } else {
+                response.consumeContent();
+                throw new ServerWebdavException();
+            }
+        } else {
+            //Etag of unfinished file was not changed, continue to download to previously created unfinished file
+        }
         downloadListener.setStartPosition(loaded);
         downloadListener.setContentLength(contentLength);
 
