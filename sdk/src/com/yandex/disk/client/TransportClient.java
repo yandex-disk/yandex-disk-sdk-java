@@ -34,7 +34,6 @@ import com.yandex.disk.client.exceptions.WebdavUserNotInitialized;
 import com.yandex.disk.client.exceptions.WebdavSharingForbiddenException;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpException;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpVersion;
 import org.apache.http.StatusLine;
@@ -58,7 +57,6 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.DefaultRedirectHandler;
-import org.apache.http.impl.client.DefaultRequestDirector;
 import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.CoreProtocolPNames;
@@ -68,8 +66,6 @@ import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.protocol.HttpContext;
-import org.apache.http.protocol.HttpProcessor;
-import org.apache.http.protocol.HttpRequestExecutor;
 import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.ByteArrayOutputStream;
@@ -93,7 +89,7 @@ import java.util.regex.Pattern;
 public class TransportClient {
 
     private static final String TAG = "TransportClient";
-    private static final String ATTR_LAST_ETAG_FROM_REDIRECT = "yandex.last-etag-from-redirect";
+    private static final String ATTR_ETAG_FROM_REDIRECT = "yandex.etag-from-redirect";
 
     protected static URL serverURL;
 
@@ -206,7 +202,7 @@ public class TransportClient {
             }
             Header etagHeader = httpResponse.getFirstHeader("Etag");
             if (etagHeader != null) {
-                httpContext.setAttribute(ATTR_LAST_ETAG_FROM_REDIRECT, etagHeader.getValue());
+                httpContext.setAttribute(ATTR_ETAG_FROM_REDIRECT, etagHeader.getValue());
             }
             return super.isRedirectRequested(httpResponse, httpContext);
         }
@@ -693,8 +689,7 @@ public class TransportClient {
 
         long length = downloadListener.getLocalLength();
         String ifTag = "If-None-Match";
-        boolean isDownloadContinuation = length > 0;
-        if (isDownloadContinuation) {
+        if (length > 0) {
             ifTag = "If-Range";
             StringBuilder contentRange = new StringBuilder();
             contentRange.append("bytes=").append(length).append("-");
@@ -757,16 +752,22 @@ public class TransportClient {
             }
         }
 
-        if (!isDownloadContinuation) {
-            String etagOfDownloadedContent = (String) httpContext.getAttribute(ATTR_LAST_ETAG_FROM_REDIRECT);
-            if (etagOfDownloadedContent != null) {
-                downloadListener.setEtag(etagOfDownloadedContent);
+        String serverEtag = (String) httpContext.getAttribute(ATTR_ETAG_FROM_REDIRECT);
+        if (!partialContent) {
+            if (serverEtag != null) {
+                downloadListener.setEtag(serverEtag);
             } else {
                 response.consumeContent();
                 throw new ServerWebdavException();
             }
         } else {
-            //Etag of unfinished file was not changed, continue to download to previously created unfinished file
+            //FIXME Hack must be replaced after fixing CHEMODAN-15816 {
+            if (serverEtag != null && !serverEtag.equals(etag)) {
+                response.consumeContent();
+                throw new RangeNotSatisfiableException("HACK: etag mismatch");
+            }
+            //FIXME }
+            //Etag hasn't changed
         }
         downloadListener.setStartPosition(loaded);
         downloadListener.setContentLength(contentLength);
