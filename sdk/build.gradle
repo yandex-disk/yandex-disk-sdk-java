@@ -43,8 +43,10 @@ uploadArchives {
             }
         } else {
             mavenDeployer {
-                repository(url: System.getenv("MAVEN_LOCAL_REPO"))
+                def userHome = System.properties['user.home']
+                repository(url: "file:///$userHome/.m2/repository/")
             }
         }
     }
 }
+

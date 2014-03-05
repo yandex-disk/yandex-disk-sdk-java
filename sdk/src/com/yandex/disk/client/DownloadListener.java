@@ -55,6 +55,5 @@ public abstract class DownloadListener implements ProgressListener {
     }
 
     public void setEtag(String etag) {
-
     }
 }
