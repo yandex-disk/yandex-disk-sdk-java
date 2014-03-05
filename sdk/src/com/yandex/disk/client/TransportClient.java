@@ -14,6 +14,7 @@ import com.yandex.disk.client.exceptions.CancelledPropfindException;
 import com.yandex.disk.client.exceptions.DownloadNoSpaceAvailableException;
 import com.yandex.disk.client.exceptions.DuplicateFolderException;
 import com.yandex.disk.client.exceptions.FileDownloadException;
+import com.yandex.disk.client.exceptions.FileModifiedException;
 import com.yandex.disk.client.exceptions.FileNotModifiedException;
 import com.yandex.disk.client.exceptions.FileTooBigServerException;
 import com.yandex.disk.client.exceptions.FilesLimitExceededServerException;
@@ -682,7 +683,7 @@ public class TransportClient {
 
     private void downloadUrl(String url, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, FileModifiedException, DownloadNoSpaceAvailableException {
         HttpGet get = new HttpGet(url);
         logMethod(get);
         creds.addAuthHeader(get);
@@ -761,13 +762,12 @@ public class TransportClient {
                 throw new ServerWebdavException();
             }
         } else {
-            //FIXME Hack must be replaced after fixing CHEMODAN-15816 {
             if (serverEtag != null && !serverEtag.equals(etag)) {
                 response.consumeContent();
-                throw new RangeNotSatisfiableException("HACK: etag mismatch");
+                throw new FileModifiedException("file changed, new etag is '" + serverEtag  +"'");
+            } else {
+                //Etag hasn't changed
             }
-            //FIXME }
-            //Etag hasn't changed
         }
         downloadListener.setStartPosition(loaded);
         downloadListener.setContentLength(contentLength);
