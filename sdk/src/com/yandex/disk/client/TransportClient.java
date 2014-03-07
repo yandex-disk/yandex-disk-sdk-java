@@ -755,12 +755,7 @@ public class TransportClient {
 
         String serverEtag = (String) httpContext.getAttribute(ATTR_ETAG_FROM_REDIRECT);
         if (!partialContent) {
-            if (serverEtag != null) {
-                downloadListener.setEtag(serverEtag);
-            } else {
-                response.consumeContent();
-                throw new ServerWebdavException();
-            }
+            downloadListener.setEtag(serverEtag);
         } else {
             if (serverEtag != null && !serverEtag.equals(etag)) {
                 response.consumeContent();
