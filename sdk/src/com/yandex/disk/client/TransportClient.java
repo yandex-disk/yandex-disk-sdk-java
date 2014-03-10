@@ -148,7 +148,7 @@ public class TransportClient {
         initHttpClient(httpClient);
     }
 
-    private void initHttpClient(DefaultHttpClient httpClient) {
+    public static void initHttpClient(DefaultHttpClient httpClient) {
         httpClient.setHttpRequestRetryHandler(requestRetryHandler);
         httpClient.setRedirectHandler(redirectHandler);
     }
