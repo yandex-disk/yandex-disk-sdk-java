@@ -86,8 +86,10 @@ public class ListParser extends Parser {
                 builder.setEtime(parseLong(text));
             } else if ("/multistatus/response/propstat/prop/mediatype".equals(path)) {
                 builder.setMediaType(text);
-            }else if ("/multistatus/response/propstat/prop/mpfs_file_id".equals(path)) {
+            } else if ("/multistatus/response/propstat/prop/mpfs_file_id".equals(path)) {
                 builder.setMpfsFileId(text);
+            } else if ("/multistatus/response/propstat/prop/hasthumbnail".equals(path)) {
+                builder.setHasThumbnail(parseBooleanAsNumber(text));
             }
         }
     }

@@ -372,6 +372,7 @@ public class TransportClient {
                     "<m:etime/>" +
                     "<m:mediatype/>" +
                     "<m:mpfs_file_id/>" +
+                    "<m:hasthumbnail/>" +
                     "</d:prop>" +
                     "</d:propfind>";
 
