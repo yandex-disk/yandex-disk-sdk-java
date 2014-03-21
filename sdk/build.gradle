@@ -37,9 +37,8 @@ uploadArchives {
         if (project.properties.containsKey('teamcity')) {
             mavenDeployer {
                 auth = { authentication(userName: teamcity['maven.username'], password: teamcity['maven.password']) }
-                repository         (url: 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile_releases/', auth)
-                snapshotRepository (url: 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile_snapshots/', auth)
-
+                repository         (url: 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile/', auth)
+    			maven { url 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile/' }
             }
         } else {
             mavenDeployer {
