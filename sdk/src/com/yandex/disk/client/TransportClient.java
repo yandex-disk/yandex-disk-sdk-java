@@ -691,7 +691,7 @@ public class TransportClient {
 
         long length = downloadListener.getLocalLength();
         String ifTag = "If-None-Match";
-        if (length > 0) {
+        if (length >= 0) {
             ifTag = "If-Range";
             StringBuilder contentRange = new StringBuilder();
             contentRange.append("bytes=").append(length).append("-");
