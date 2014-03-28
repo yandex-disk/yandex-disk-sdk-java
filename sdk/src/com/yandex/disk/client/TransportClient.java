@@ -13,7 +13,7 @@ import com.yandex.disk.client.exceptions.CancelledDownloadException;
 import com.yandex.disk.client.exceptions.CancelledPropfindException;
 import com.yandex.disk.client.exceptions.DownloadNoSpaceAvailableException;
 import com.yandex.disk.client.exceptions.DuplicateFolderException;
-import com.yandex.disk.client.exceptions.FileDownloadException;
+import com.yandex.disk.client.exceptions.RemoteFileNotFoundException;
 import com.yandex.disk.client.exceptions.FileModifiedException;
 import com.yandex.disk.client.exceptions.FileNotModifiedException;
 import com.yandex.disk.client.exceptions.FileTooBigServerException;
@@ -611,13 +611,13 @@ public class TransportClient {
 
     public void downloadFile(String path, File saveTo, ProgressListener progressListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, FileDownloadException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         downloadFile(path, saveTo, 0, 0, progressListener);
     }
 
     public void downloadFile(final String path, final File saveTo, final long length, final long fileSize, final ProgressListener progressListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, FileDownloadException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         download(path, new DownloadListener() {
             @Override
             public long getLocalLength() {
@@ -644,7 +644,7 @@ public class TransportClient {
 
     public byte[] download(final String path)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, FileDownloadException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         download(path, new DownloadListener() {
             @Override
@@ -658,7 +658,7 @@ public class TransportClient {
 
     public byte[] downloadUrl(final String url)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, FileDownloadException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         downloadUrl(url, new DownloadListener() {
             @Override
@@ -672,19 +672,19 @@ public class TransportClient {
 
     public void download(String path, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, FileDownloadException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         downloadUrl(getUrl()+encodeURL(path), downloadListener);
     }
 
     public void downloadPreview(String path, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, FileDownloadException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         downloadUrl(getUrl()+path, downloadListener);
     }
 
     private void downloadUrl(String url, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, FileDownloadException, DownloadNoSpaceAvailableException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, RemoteFileNotFoundException, DownloadNoSpaceAvailableException, RangeNotSatisfiableException, FileModifiedException {
         HttpGet get = new HttpGet(url);
         logMethod(get);
         creds.addAuthHeader(get);
@@ -723,7 +723,7 @@ public class TransportClient {
                     throw new FileNotModifiedException();
                 case 404:
                     consumeContent(httpResponse);
-                    throw new FileDownloadException("error while downloading file "+url);
+                    throw new RemoteFileNotFoundException("error while downloading file "+url);
                 case 416:
                     consumeContent(httpResponse);
                     throw new RangeNotSatisfiableException("error while downloading file "+url);
