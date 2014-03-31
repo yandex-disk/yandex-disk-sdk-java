@@ -13,7 +13,8 @@ import com.yandex.disk.client.exceptions.CancelledDownloadException;
 import com.yandex.disk.client.exceptions.CancelledPropfindException;
 import com.yandex.disk.client.exceptions.DownloadNoSpaceAvailableException;
 import com.yandex.disk.client.exceptions.DuplicateFolderException;
-import com.yandex.disk.client.exceptions.FileDownloadException;
+import com.yandex.disk.client.exceptions.RemoteFileNotFoundException;
+import com.yandex.disk.client.exceptions.FileModifiedException;
 import com.yandex.disk.client.exceptions.FileNotModifiedException;
 import com.yandex.disk.client.exceptions.FileTooBigServerException;
 import com.yandex.disk.client.exceptions.FilesLimitExceededServerException;
@@ -89,6 +90,7 @@ import java.util.regex.Pattern;
 public class TransportClient {
 
     private static final String TAG = "TransportClient";
+    private static final String ATTR_ETAG_FROM_REDIRECT = "yandex.etag-from-redirect";
 
     protected static URL serverURL;
 
@@ -102,7 +104,7 @@ public class TransportClient {
 
     protected static final String userAgent = "Webdav Android Client Example/1.0";
     protected static final String LOCATION_HEADER = "Location";
-    protected static final String NO_REDIRECT_CONTEXT = "yandex.no-redirect";
+    public static final String NO_REDIRECT_CONTEXT = "yandex.no-redirect";
     protected static final String WEBDAV_PROTO_DEPTH = "Depth";
 
     protected static final int NETWORK_TIMEOUT = 30000;
@@ -122,11 +124,12 @@ public class TransportClient {
         return new TransportClient(context, credentials, UPLOAD_NETWORK_TIMEOUT);
     }
 
-    public TransportClient(Context context, Credentials credentials, HttpClient httpClient)
+    public TransportClient(Context context, Credentials credentials, DefaultHttpClient httpClient)
             throws WebdavClientInitException {
         this.context = context;
         this.creds = credentials;
         this.httpClient = httpClient;
+        initHttpClient(httpClient);
     }
 
     protected TransportClient(Context context, Credentials credentials, int timeout)
@@ -142,6 +145,12 @@ public class TransportClient {
         DefaultHttpClient httpClient = getNewHttpClient(userAgent, timeout);
         httpClient.setCookieStore(new BasicCookieStore());
         this.httpClient = httpClient;
+        initHttpClient(httpClient);
+    }
+
+    public static void initHttpClient(DefaultHttpClient httpClient) {
+        httpClient.setHttpRequestRetryHandler(requestRetryHandler);
+        httpClient.setRedirectHandler(redirectHandler);
     }
 
     protected static DefaultHttpClient getNewHttpClient(String userAgent, int timeout)
@@ -175,8 +184,6 @@ public class TransportClient {
         }
         res.getParams().setParameter(CoreProtocolPNames.USE_EXPECT_CONTINUE, true);
         res.getParams().setParameter(CoreProtocolPNames.WAIT_FOR_CONTINUE, timeout);
-        res.setHttpRequestRetryHandler(requestRetryHandler);
-        res.setRedirectHandler(redirectHandler);
         return res;
     }
 
@@ -194,7 +201,10 @@ public class TransportClient {
             if (noRedirect != null && (Boolean) noRedirect) {
                 return false;
             }
-
+            Header etagHeader = httpResponse.getFirstHeader("Etag");
+            if (etagHeader != null) {
+                httpContext.setAttribute(ATTR_ETAG_FROM_REDIRECT, etagHeader.getValue());
+            }
             return super.isRedirectRequested(httpResponse, httpContext);
         }
     };
@@ -345,23 +355,25 @@ public class TransportClient {
     }
 
     private static final String PROPFIND_REQUEST =
-            "<?xml version='1.0' encoding='utf-8' ?>"+
-                    "<d:propfind xmlns:d='DAV:'>"+
-                    "<d:prop xmlns:m='urn:yandex:disk:meta'>"+
-                    "<d:resourcetype/>"+
-                    "<d:displayname/>"+
-                    "<d:getcontentlength/>"+
-                    "<d:getlastmodified/>"+
-                    "<d:getetag/>"+
-                    "<d:getcontenttype/>"+
-                    "<m:alias_enabled/>"+
-                    "<m:visible/>"+
-                    "<m:shared/>"+
-                    "<m:readonly/>"+
-                    "<m:public_url/>"+
-                    "<m:etime/>"+
-                    "<m:mediatype/>"+
-                    "</d:prop>"+
+            "<?xml version='1.0' encoding='utf-8' ?>" +
+                    "<d:propfind xmlns:d='DAV:'>" +
+                    "<d:prop xmlns:m='urn:yandex:disk:meta'>" +
+                    "<d:resourcetype/>" +
+                    "<d:displayname/>" +
+                    "<d:getcontentlength/>" +
+                    "<d:getlastmodified/>" +
+                    "<d:getetag/>" +
+                    "<d:getcontenttype/>" +
+                    "<m:alias_enabled/>" +
+                    "<m:visible/>" +
+                    "<m:shared/>" +
+                    "<m:readonly/>" +
+                    "<m:public_url/>" +
+                    "<m:etime/>" +
+                    "<m:mediatype/>" +
+                    "<m:mpfs_file_id/>" +
+                    "<m:hasthumbnail/>" +
+                    "</d:prop>" +
                     "</d:propfind>";
 
     private static final int MAX_ITEMS_PER_PAGE = Integer.MAX_VALUE;
@@ -570,7 +582,7 @@ public class TransportClient {
         }
 
         if (uploadedSize > 0) {
-            StringBuffer contentRange = new StringBuffer();
+            StringBuilder contentRange = new StringBuilder();
             contentRange.append("bytes ").append(uploadedSize).append("-").append(file.length()-1).append("/").append(file.length());
             Log.d(TAG, "Content-Range: "+contentRange);
             put.addHeader("Content-Range", contentRange.toString());
@@ -599,22 +611,17 @@ public class TransportClient {
 
     public void downloadFile(String path, File saveTo, ProgressListener progressListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         downloadFile(path, saveTo, 0, 0, progressListener);
     }
 
     public void downloadFile(final String path, final File saveTo, final long length, final long fileSize, final ProgressListener progressListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         download(path, new DownloadListener() {
             @Override
             public long getLocalLength() {
                 return length;
-            }
-
-            @Override
-            public long getServerLength() {
-                return fileSize;
             }
 
             @Override
@@ -637,7 +644,7 @@ public class TransportClient {
 
     public byte[] download(final String path)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         download(path, new DownloadListener() {
             @Override
@@ -651,7 +658,7 @@ public class TransportClient {
 
     public byte[] downloadUrl(final String url)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         downloadUrl(url, new DownloadListener() {
             @Override
@@ -665,33 +672,29 @@ public class TransportClient {
 
     public void download(String path, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         downloadUrl(getUrl()+encodeURL(path), downloadListener);
     }
 
     public void downloadPreview(String path, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException, RemoteFileNotFoundException, RangeNotSatisfiableException, FileModifiedException {
         downloadUrl(getUrl()+path, downloadListener);
     }
 
     private void downloadUrl(String url, DownloadListener downloadListener)
             throws IOException, WebdavUserNotInitialized, PreconditionFailedException, WebdavNotAuthorizedException, ServerWebdavException,
-            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, DownloadNoSpaceAvailableException {
+            CancelledDownloadException, UnknownServerWebdavException, FileNotModifiedException, RemoteFileNotFoundException, DownloadNoSpaceAvailableException, RangeNotSatisfiableException, FileModifiedException {
         HttpGet get = new HttpGet(url);
         logMethod(get);
         creds.addAuthHeader(get);
 
         long length = downloadListener.getLocalLength();
-        long fileSize = downloadListener.getServerLength();
         String ifTag = "If-None-Match";
-        if (length > 0) {
+        if (length >= 0) {
             ifTag = "If-Range";
-            StringBuffer contentRange = new StringBuffer();
+            StringBuilder contentRange = new StringBuilder();
             contentRange.append("bytes=").append(length).append("-");
-            if (fileSize > 0) {
-                contentRange.append(fileSize-1);
-            }
             Log.d(TAG, "Range: "+contentRange);
             get.addHeader("Range", contentRange.toString());
         }
@@ -703,7 +706,8 @@ public class TransportClient {
         }
 
         boolean partialContent = false;
-        HttpResponse httpResponse = executeRequest(get);
+        BasicHttpContext httpContext = new BasicHttpContext();
+        HttpResponse httpResponse = executeRequest(get, httpContext);
         StatusLine statusLine = httpResponse.getStatusLine();
         if (statusLine != null) {
             int statusCode = statusLine.getStatusCode();
@@ -719,7 +723,7 @@ public class TransportClient {
                     throw new FileNotModifiedException();
                 case 404:
                     consumeContent(httpResponse);
-                    throw new FileDownloadException("error while downloading file "+url);
+                    throw new RemoteFileNotFoundException("error while downloading file "+url);
                 case 416:
                     consumeContent(httpResponse);
                     throw new RangeNotSatisfiableException("error while downloading file "+url);
@@ -742,12 +746,23 @@ public class TransportClient {
                 contentLength = contentRangeResponse.getSize();
             } else {
                 loaded = length;
-                contentLength = fileSize;
             }
         } else {
             loaded = 0;
             if (contentLength < 0) {
                 contentLength = 0;
+            }
+        }
+
+        String serverEtag = (String) httpContext.getAttribute(ATTR_ETAG_FROM_REDIRECT);
+        if (!partialContent) {
+            downloadListener.setEtag(serverEtag);
+        } else {
+            if (serverEtag != null && !serverEtag.equals(etag)) {
+                response.consumeContent();
+                throw new FileModifiedException("file changed, new etag is '" + serverEtag  +"'");
+            } else {
+                //Etag hasn't changed
             }
         }
         downloadListener.setStartPosition(loaded);

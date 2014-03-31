@@ -1,58 +1,51 @@
-apply plugin: 'java'
-apply plugin: 'maven'
-
-group = 'ru.yandex.android'
-
-version = '1.02'
+apply plugin: 'android-library'
 
 buildscript {
     repositories {
-        if (!project.properties.containsKey('teamcity')) ivy{name "local"; url 'file://' + new File(System.getProperty('user.home'), '.yandex-mobdev/ivy-repo').absolutePath}
         mavenCentral()
-        maven {url 'http://maven1iva.yandex.net/nexus/content/repositories/yandex_mobile/'}
-        maven {url 'http://maven1eto.yandex.net/nexus/content/repositories/yandex_mobile/'}
     }
     dependencies {
-        classpath ("ru.yandex.android.tools:gradle-android-plugin:1.08-SNAPSHOT") {changing = true}
-        classpath ("ru.yandex.android.tools:gradle-upload-beta-plugin:1.00-SNAPSHOT") {changing = true}
-        classpath "org.apache.httpcomponents:httpclient:4.1.3"
-        classpath "org.apache.httpcomponents:httpmime:4.1.3"
+        classpath 'com.android.tools.build:gradle:0.7.3'
     }
 }
 
-buildscript {
-    configurations.classpath.resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+dependencies {
+    compile 'com.android.support:support-v4:18.0.+'
 }
 
-apply plugin: 'yapklib'
-apply plugin: 'upload-beta'
+android {
+    compileSdkVersion 19
+    buildToolsVersion '19.0.0'
 
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['src']
+            res.srcDirs = ['res']
+        }
+    }
 
-repositories {
-    if (!project.properties.containsKey('teamcity')) ivy{name "local"; url 'file://' + new File(System.getProperty('user.home'), '.yandex-mobdev/ivy-repo').absolutePath}
-    mavenCentral()
-    maven {url 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile/'}
 }
 
-configurations.all {
-    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
-}
+apply plugin: 'maven'
 
-task wrapper(type: Wrapper) {
-  gradleVersion = '1.3'
-}
+group = 'ru.yandex.android'
+version = '1.02'
 
 uploadArchives {
     repositories {
         if (project.properties.containsKey('teamcity')) {
             mavenDeployer {
                 auth = { authentication(userName: teamcity['maven.username'], password: teamcity['maven.password']) }
-                repository(url: 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile_releases/', auth)
-                snapshotRepository(url: 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile_snapshots/', auth)
+                repository         (url: 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile_releases/', auth)
+                snapshotRepository (url: 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile_snapshots/', auth)
             }
-        }
-        else {
-            add project.repositories.local
+        } else {
+            mavenDeployer {
+                def userHome = System.properties['user.home']
+                repository(url: "file:///$userHome/.m2/repository/")
+            }
         }
     }
 }
+

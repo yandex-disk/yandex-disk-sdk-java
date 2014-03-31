@@ -6,11 +6,9 @@
 
 package com.yandex.disk.client.exceptions;
 
-import java.io.IOException;
+public class RemoteFileNotFoundException extends WebdavException {
 
-public class FileDownloadException extends IOException {
-
-    public FileDownloadException(String msg) {
+    public RemoteFileNotFoundException(String msg) {
         super(msg);
     }
 }
