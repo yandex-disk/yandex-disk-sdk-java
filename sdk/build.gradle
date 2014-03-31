@@ -30,7 +30,7 @@ android {
 apply plugin: 'maven'
 
 group = 'ru.yandex.android'
-version = '1.02'
+version = '1.03'
 
 uploadArchives {
     repositories {
