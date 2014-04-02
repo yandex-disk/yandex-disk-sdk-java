@@ -1,60 +1,28 @@
-apply plugin: 'java'
-apply plugin: 'maven'
-
-group = 'ru.yandex.android'
-
-version = '1.0-SNAPSHOT'
+apply plugin: 'android'
 
 buildscript {
     repositories {
-        if (!project.properties.containsKey('teamcity')) ivy{name "local"; url 'file/' + new File(System.getProperty('user.home'), '.yandex-mobdev/ivy-repo').absolutePath}
         mavenCentral()
-        maven {url 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile/'}
     }
     dependencies {
-        classpath ("ru.yandex.android.tools:gradle-android-plugin:1.07-SNAPSHOT") {changing = true}
-        classpath ("ru.yandex.android.tools:gradle-upload-beta-plugin:1.00-SNAPSHOT") {changing = true}
-        classpath "org.apache.httpcomponents:httpclient:4.1.3"
-        classpath "org.apache.httpcomponents:httpmime:4.1.3"
+        classpath 'com.android.tools.build:gradle:0.7.3'
     }
 }
 
-buildscript {
-    configurations.classpath.resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
-}
-
-apply plugin: 'yapklib'
-apply plugin: 'upload-beta'
-
-
-repositories {
-    if (!project.properties.containsKey('teamcity')) ivy{name "local"; url 'file/' + new File(System.getProperty('user.home'), '.yandex-mobdev/ivy-repo').absolutePath}
-    mavenCentral()
-    maven {url 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile/'}
-}
-
-configurations.all {
-    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
-}
 dependencies {
-    apklib ('ru.yandex.android:yandex-disk-sdk:1.0-SNAPSHOT:nolibs@apklib')
+    compile 'com.android.support:support-v4:19.0.1'
+    compile project (':sdk')
 }
 
-task wrapper(type: Wrapper) {
-  gradleVersion = '1.3'
-}
+android {
+    compileSdkVersion 19
+    buildToolsVersion '19.0.0'
 
-uploadArchives {
-    repositories {
-        if (project.properties.containsKey('teamcity')) {
-            mavenDeployer {
-                auth = { authentication(userName: teamcity['maven.username'], password: teamcity['maven.password']) }
-                repository(url: 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile_releases/', auth)
-                snapshotRepository(url: 'http://maven.yandex.net/nexus/content/repositories/yandex_mobile_snapshots/', auth)
-            }
-        }
-        else {
-            add project.repositories.local
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['src']
+            res.srcDirs = ['res']
         }
     }
 }
