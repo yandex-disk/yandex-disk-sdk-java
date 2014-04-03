@@ -11,7 +11,7 @@ buildscript {
 
 dependencies {
     compile 'com.android.support:support-v4:19.0.1'
-    compile project (':sdk')
+    compile project (':yandex-disk-sdk')
 }
 
 android {
